@@ -1,0 +1,19 @@
+He creado el documento de arquitectura técnica en ARCHITECTURE.md con todos los entregables:
+Resumen ejecutivo:
+Stack elegido:
+- RAG: LlamaIndex (40% menos overhead que LangChain)
+- LLM: Phi-3-mini-4k-instruct (~2GB Q4, optimizado para edge)
+- Embeddings: all-MiniLM-L6-v2 (90MB, 384 dims)
+- Vector DB: ChromaDB embebido (zero-ops, zero server overhead)
+- Backend: FastAPI + SQLAlchemy + SQLite
+- Frontend: Svelte (bundle ~10KB vs React ~150KB)
+Decisiones clave:
+1. LlamaIndex por su integración nativa con Triton y menor footprint
+2. Phi-3-mini para caber en 8GB RAM dejando espacio para el sistema
+3. ChromaDB embebido eliminando overhead de servidor
+4. SSE para streaming de respuestas
+5. Svelte por su minimalismo en memoria
+Riesgos principales:
+1. OOM: Mitigado con límites de memoria en Docker + monitoring
+2. Latencia: Pre-warm de modelos + KV cache optimizado en Triton
+3. File uploads: Streaming a disco + processing en background
