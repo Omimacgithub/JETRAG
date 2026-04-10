@@ -1,0 +1,227 @@
+================================================================================
+                    JETRAG - RESUMEN DE IMPLEMENTACION
+================================================================================
+
+PROYECTO: JETRAG - Chatbot RAG local para NVIDIA Jetson
+AUTOR: Agente IA
+FECHA: 2026-04-10
+
+--------------------------------------------------------------------------------
+1. STACK TECNOLOGICO
+--------------------------------------------------------------------------------
+
+Backend:
+  - FastAPI 0.109.0 (framework web async)
+  - SQLAlchemy 2.0.25 (ORM)
+  - ChromaDB 0.4.22 (vector store embebido)
+  - Triton Client 3.0.0 (inferencia GPU)
+  - Pydantic 2.5.3 (validacion)
+
+Frontend:
+  - SvelteKit 2.0 (SPA framework)
+  - TailwindCSS 3.4 (estilos)
+  - TypeScript 5.0 (tipado)
+
+ML:
+  - LLM: Phi-3-mini-4k-instruct (3.8B params)
+  - Embeddings: all-MiniLM-L6-v2 (22M params)
+  - Inference: NVIDIA Triton + TensorRT
+
+--------------------------------------------------------------------------------
+2. ESTRUCTURA DE ARCHIVOS (48 archivos)
+--------------------------------------------------------------------------------
+
+jetrag/
+|-- docker-compose.yml              # 3 servicios: triton, backend, frontend
+|-- backend/
+|   |-- Dockerfile                  # Python 3.11-slim
+|   |-- requirements.txt
+|   |-- main.py                    # FastAPI app + CORS + lifespan
+|   |-- config.py                  # Pydantic settings
+|   |-- api/
+|   |   |-- dependencies.py       # Inyeccion dependencias
+|   |   `-- routes/
+|   |       |-- chests.py         # CRUD cofres
+|   |       |-- sources.py        # CRUD fuentes + batch
+|   |       `-- chat.py          # Streaming SSE
+|   |-- core/
+|   |   |-- database.py          # SQLite + SQLAlchemy
+|   |   |-- vector_store.py     # ChromaDB wrapper
+|   |   `-- ml/
+|   |       |-- llm.py          # Triton client (Phi-3)
+|   |       `-- embeddings.py   # Triton client (MiniLM)
+|   |-- models/
+|   |   |-- chest.py            # Entidad Chest
+|   |   |-- source.py           # Entidad Source
+|   |   |-- chat_message.py     # Entidad ChatMessage
+|   |   `-- schemas.py          # Pydantic schemas
+|   `-- services/
+|       |-- chest_service.py    # Logica cofres
+|       |-- source_service.py   # Parsing + chunking
+|       `-- rag_service.py     # Pipeline RAG completo
+|
+|-- frontend/
+|   |-- Dockerfile               # Multi-stage (Node -> nginx)
+|   |-- nginx.conf              # Proxy /api -> backend
+|   |-- package.json
+|   |-- svelte.config.js
+|   `-- src/
+|       |-- app.html
+|       |-- app.css
+|       |-- lib/
+|       |   |-- api/client.ts   # API client tipado
+|       |   |-- stores/
+|       |   |   |-- chests.ts   # Svelte store
+|       |   |   `-- chat.ts    # Chat + sources stores
+|       |   `-- components/
+|       |       |-- ChestCard.svelte
+|       |       |-- SourcePanel.svelte
+|       |       |-- SourceWidget.svelte
+|       |       |-- ChatArea.svelte
+|       |       |-- MessageBubble.svelte
+|       |       `-- AddSourceModal.svelte
+|       `-- routes/
+|           |-- +layout.svelte
+|           |-- +page.svelte    # MAIN view
+|           `-- chest/[id]/
+|               `-- +page.svelte # CHAT view
+|
+|-- scripts/
+|   `-- build_triton_models.sh  # Compilacion TensorRT
+|
+`-- data/
+    |-- sqlite/                  # (creado por SQLite)
+    `-- chroma/                  # (creado por ChromaDB)
+
+--------------------------------------------------------------------------------
+3. ENTIDADES DEL MODELO DE DATOS
+--------------------------------------------------------------------------------
+
+Chest (cofre):
+  - id: TEXT (UUID, PK)
+  - name: TEXT (nombre del cofre)
+  - created_at: TIMESTAMP
+  - updated_at: TIMESTAMP
+  - Relations: sources[], messages[]
+
+Source (fuente):
+  - id: TEXT (UUID, PK)
+  - chest_id: TEXT (FK -> Chest)
+  - name: TEXT (nombre)
+  - type: TEXT (TXT | URL | FILE)
+  - content: TEXT (contenido raw o URL)
+  - content_hash: TEXT (SHA256 para deduplicacion)
+  - is_enabled: BOOLEAN (para toggle en respuestas)
+  - created_at: TIMESTAMP
+
+ChatMessage (mensaje):
+  - id: TEXT (UUID, PK)
+  - chest_id: TEXT (FK -> Chest)
+  - role: TEXT (USER | ASSISTANT)
+  - content: TEXT (texto del mensaje)
+  - sources_used: TEXT (JSON array de source_ids)
+  - created_at: TIMESTAMP
+
+--------------------------------------------------------------------------------
+4. API ENDPOINTS
+--------------------------------------------------------------------------------
+
+Chests:
+  GET    /api/chests              - Listar todos
+  POST   /api/chests              - Crear cofre
+  GET    /api/chests/{id}         - Obtener cofre
+  PATCH  /api/chests/{id}         - Actualizar nombre
+  DELETE /api/chests/{id}         - Eliminar cofre
+  GET    /api/chests/{id}/sources - Listar fuentes
+
+Sources:
+  POST   /api/chests/{id}/sources/batch  - Crear + procesar fuentes
+  PATCH  /api/sources/{id}               - Toggle/enabled o renombrar
+  DELETE /api/sources/{id}               - Eliminar fuente
+
+Chat:
+  GET    /api/chests/{id}/messages - Historial
+  POST   /api/chests/{id}/chat     - Streaming SSE
+
+--------------------------------------------------------------------------------
+5. FLUJO PRINCIPAL
+--------------------------------------------------------------------------------
+
+PASO 1: Pagina principal
+  -> Lista de cofres (GET /api/chests)
+  -> Crear nuevo cofre (POST -> navegar a PASO 2)
+  -> Eliminar cofre (DELETE)
+
+PASO 2: Chat view
+  -> Panel fuentes (izq) + Chat (der)
+  -> Crear cofre (POST -> recarga con nuevo cofre)
+  -> Comprimir panel (toggle)
+
+PASO 3: Anadir fuentes (modal)
+  -> TXT / URL / FILE
+  -> Anadir multiples fuentes al localStorage
+  -> Confirmar -> POST /api/chests/{id}/sources/batch
+  -> Processing indicator (esperar)
+  -> Volver a PASO 2
+
+PASO 4: Pipeline RAG
+  -> Retrieve: query embedding -> ChromaDB
+  -> Augment: build prompt con contexto
+  -> Generate: Triton -> Phi-3-mini
+
+PASO 5: Renderizar respuesta
+  -> Streaming SSE -> MessageBubble
+
+--------------------------------------------------------------------------------
+6. DEPENDENCIAS
+--------------------------------------------------------------------------------
+
+Backend:
+  pip install -r backend/requirements.txt
+
+Frontend:
+  cd frontend && npm install
+
+Hardware (compilacion modelos):
+  - CUDA 12.x
+  - TensorRT 9.x
+  - GPU NVIDIA (8GB VRAM minimo)
+
+--------------------------------------------------------------------------------
+7. COMO PROBARLO
+--------------------------------------------------------------------------------
+
+# 1. Compilar modelos TensorRT (requiere GPU NVIDIA)
+cd scripts
+chmod +x build_triton_models.sh
+./build_triton_models.sh
+
+# 2. Crear directorios de datos
+mkdir -p data/sqlite data/chroma
+
+# 3. Construir e iniciar contenedores
+docker-compose up --build
+
+# 4. Acceder a la app
+open http://localhost:3000
+
+--------------------------------------------------------------------------------
+8. NOTAS DE IMPLEMENTACION
+--------------------------------------------------------------------------------
+
+- Los clientes Triton (llm.py, embeddings.py) usan la API generica de Triton
+  sin depender de tensorrtllm. El modelo debe estar pre-compilado en formato
+  compatible con los inputs/outputs definidos en config.pbtxt.
+
+- El script build_triton_models.sh es orientativo. Los comandos exactos
+  dependen de la version de TensorRT y la arquitectura target (ARM64 para
+  Jetson).
+
+- Para desarrollo sin GPU, considerar:
+  * Ollama como backend LLM local
+  * sentence-transformers para embeddings en CPU
+  * Cambiar TRITON_URL a servicio local
+
+================================================================================
+                              FIN DEL RESUMEN
+================================================================================

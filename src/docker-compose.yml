@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.01-py3
+    container_name: jetrag-triton
+    ports:
+      - "8001:8000"
+      - "8002:8001"
+      - "8003:8002"
+    volumes:
+      - ./triton/models:/models
+    command: tritonserver --model-repository=/models --model-control-mode=explicit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jetrag-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/sqlite:/app/data/sqlite
+      - ./data/chroma:/app/data/chroma
+      - ./triton/models:/app/triton/models:ro
+    environment:
+      - TRITON_URL=http://triton:8000
+      - CUDA_VISIBLE_DEVICES=0
+    depends_on:
+      - triton
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 4G
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: jetrag-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  sqlite:
+  chroma:
