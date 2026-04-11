@@ -4,8 +4,8 @@ Chatbot RAG local para NVIDIA Jetson con FastAPI, Svelte y ChromaDB.
 
 ## Requisitos
 
-- Python 3.11+
-- Node.js 20+
+- Python >= 3.10
+- Node.js >= 20
 - Docker y Docker Compose
 - GPU NVIDIA (opcional para desarrollo, necesario para producción)
 
@@ -21,6 +21,9 @@ cd JETRAG/src
 ### 2. Crear entorno virtual de Python
 
 ```bash
+# Instalar venv en el SO
+sudo apt install python3-venv
+
 # Crear entorno virtual
 python3 -m venv venv
 
@@ -75,6 +78,12 @@ Accede a http://localhost:3000
 1. **Compilar modelos TensorRT** (requiere GPU NVIDIA):
 
 ```bash
+# Cambiar al directorio scripts
+cd scripts/
+
+# Instalar dependencias
+pip install -r requirements.txt
+
 # Dar permisos al script
 chmod +x scripts/build_triton_models.sh
 
