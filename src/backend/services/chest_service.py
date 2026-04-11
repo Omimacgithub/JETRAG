@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from core.vector_store import get_vector_store
 from models.chest import Chest
-from models.schemas import ChestCreate, ChestUpdate
+from models.schemas import ChestCreate, ChestResponse, ChestUpdate
 
 
 class ChestService:
@@ -13,29 +13,33 @@ class ChestService:
         self.db = db
         self.vector_store = get_vector_store()
 
-    def get_all(self) -> list[Chest]:
+    def get_all(self) -> list[ChestResponse]:
         """Get all chests ordered by most recent."""
-        return (
+        chests = (
             self.db.query(Chest)
             .order_by(Chest.updated_at.desc())
             .all()
         )
+        return [ChestResponse.model_validate(c) for c in chests]
 
-    def get_by_id(self, chest_id: str) -> Chest | None:
+    def get_by_id(self, chest_id: str) -> ChestResponse | None:
         """Get a chest by ID."""
-        return self.db.query(Chest).filter(Chest.id == chest_id).first()
+        chest = self.db.query(Chest).filter(Chest.id == chest_id).first()
+        if chest is None:
+            return None
+        return ChestResponse.model_validate(chest)
 
-    def create(self, data: ChestCreate) -> Chest:
+    def create(self, data: ChestCreate) -> ChestResponse:
         """Create a new chest."""
         chest = Chest(name=data.name)
         self.db.add(chest)
         self.db.commit()
         self.db.refresh(chest)
-        return chest
+        return ChestResponse.model_validate(chest)
 
-    def update(self, chest_id: str, data: ChestUpdate) -> Chest | None:
+    def update(self, chest_id: str, data: ChestUpdate) -> ChestResponse | None:
         """Update an existing chest."""
-        chest = self.get_by_id(chest_id)
+        chest = self.db.query(Chest).filter(Chest.id == chest_id).first()
         if not chest:
             return None
 
@@ -44,7 +48,7 @@ class ChestService:
 
         self.db.commit()
         self.db.refresh(chest)
-        return chest
+        return ChestResponse.model_validate(chest)
 
     def delete(self, chest_id: str) -> bool:
         """Delete a chest and its associated data."""
