@@ -1,18 +1,18 @@
-# Esquema SQL (SQLite)
+# SQL Schema (SQLite)
 
 ```sql
--- Tabla de cofres
+-- Chests table
 CREATE TABLE chests (
-    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    id INTEGER PRIMARY KEY DEFAULT,
     name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de fuentes
+-- Sources table
 CREATE TABLE sources (
-    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-    chest_id TEXT NOT NULL REFERENCES chests(id) ON DELETE CASCADE,
+    id INTEGER PRIMARY KEY DEFAULT,
+    chest_id INTEGER NOT NULL REFERENCES chests(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('TXT', 'URL', 'FILE')),
     content TEXT,                          -- Contenido raw o URL
@@ -21,17 +21,17 @@ CREATE TABLE sources (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de mensajes del chat
+-- Chat messages table
 CREATE TABLE chat_messages (
-    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-    chest_id TEXT NOT NULL REFERENCES chests(id) ON DELETE CASCADE,
+    id INTEGER PRIMARY KEY DEFAULT,
+    chest_id INTEGER NOT NULL REFERENCES chests(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK(role IN ('USER', 'ASSISTANT')),
     content TEXT NOT NULL,
     sources_used JSON,                     -- Lista de sources utilizados
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Índices
+-- Indexes
 CREATE INDEX idx_sources_chest ON sources(chest_id);
 CREATE INDEX idx_messages_chest ON chat_messages(chest_id);
 ```

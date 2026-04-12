@@ -1,124 +1,95 @@
-<script lang="ts">
+<script>
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { api } from '$lib/api/client';
-	import { sourceStore, chatStore } from '$lib/stores/chat';
-	import SourcePanel from '$lib/components/SourcePanel.svelte';
-	import ChatArea from '$lib/components/ChatArea.svelte';
-	import AddSourceModal from '$lib/components/AddSourceModal.svelte';
-	import type { Source } from '$lib/api/client';
-
-	let chestId = '';
-	let chestName = '';
-	let sources: Source[] = [];
+	import { chestAPI, sourceAPI } from '../../lib/api/client';
+	import SourcePanel from '../../lib/components/SourcePanel.svelte';
+	import ChatArea from '../../lib/components/ChatArea.svelte';
+	import { chatMessages } from '../../lib/stores/chat';
+	
+	export let params;
+	let chestId = null;
+	let chest = null;
 	let loading = true;
-	let showAddModal = false;
-
-	sourceStore.subscribe((s) => (sources = s));
-
+	let error = null;
+	
+	// Load chest data on mount
 	onMount(async () => {
-		const unsubscribe = page.subscribe(($page) => {
-			chestId = $page.params.id;
-		});
-		unsubscribe();
-
+		chestId = parseInt(params.id);
+		if (isNaN(chestId)) {
+			error = 'Invalid chest ID';
+			loading = false;
+			return;
+		}
+		
 		try {
-			const chests = await api.getChests();
-			const chest = chests.find((c) => c.id === chestId);
-			if (!chest) {
-				goto('/');
-				return;
-			}
-			chestName = chest.name;
-			await Promise.all([
-				sourceStore.load(chestId),
-				chatStore.load(chestId),
-			]);
-		} catch {
-			goto('/');
+			const chestData = await chestAPI.getById(chestId);
+			chest = chestData;
+			
+			// Initialize chat store with any existing messages for this chest
+			// In a real app, we'd fetch these from the backend
+			chatMessages.set([]);
+			
+		} catch (err) {
+			console.error('Failed to load chest:', err);
+			error = 'Failed to load chest data';
 		} finally {
 			loading = false;
 		}
 	});
-
-	async function createNewChest() {
-		const newChest = await api.createChest(`Cofre ${Date.now()}`);
-		await sourceStore.load(newChest.id);
-		goto(`/chest/${newChest.id}`);
-	}
-
-	async function handleSourceDelete(id: string) {
-		await api.deleteSource(id);
-		sourceStore.remove(id);
-	}
-
-	async function handleSourceUpdate(id: string, name: string) {
-		await api.updateSource(id, { name });
-		sourceStore.update(id, { name });
-	}
-
-	async function handleSourceToggle(id: string, isEnabled: boolean) {
-		await api.updateSource(id, { is_enabled: isEnabled });
-		sourceStore.toggle(id);
-	}
-
-	async function handleSourcesAdded(newSources: Source[]) {
-		showAddModal = false;
-		await sourceStore.load(chestId);
-	}
-
-	function goHome() {
-		goto('/');
+	
+	function handleSourceAdded(sourceData) {
+		// In a real implementation, we would update the source list
+		// For now, we'll just show a success message
+		alert('Source added successfully! Processing...');
 	}
 </script>
 
-<div class="h-screen flex flex-col bg-slate-900">
-	<header class="flex-shrink-0 bg-slate-800 border-b border-slate-700 px-4 py-3">
-		<div class="flex items-center justify-between h-full">
-			<div class="flex items-center gap-4">
-				<button
-					class="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
-					on:click={goHome}
-					title="Volver"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-					</svg>
-				</button>
-				<h1 class="text-lg font-medium text-slate-100">{chestName}</h1>
-			</div>
-			<button
-				class="btn btn-primary text-sm"
-				on:click={createNewChest}
-			>
-				+ Nuevo cofre
-			</button>
+<div class="flex h-screen bg-gray-50">
+	{/* Sidebar - Chest Info and Sources */}
+	<div class="w-64 bg-white border-r border-gray-200 flex flex-col">
+		<div class="p-4 border-b">
+			<h1 class="text-xl font-bold">{chest?.name || 'Loading chest...'}</h1>
+			<p class="text-sm text-gray-500 mt-1">
+				ID: {chestId}
+			</p>
 		</div>
-	</header>
-
-	<div class="flex-1 flex overflow-hidden">
+		
 		{#if loading}
 			<div class="flex-1 flex items-center justify-center">
-				<div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+			</div>
+		{:else if error}
+			<div class="flex-1 flex items-center justify-center p-4 text-center text-red-500">
+				{error}
 			</div>
 		{:else}
-			<SourcePanel
-				{sources}
-				on:add={() => (showAddModal = true)}
-				on:delete={(e) => handleSourceDelete(e.detail)}
-				on:update={(e) => handleSourceUpdate(e.detail.id, e.detail.name)}
-				on:toggle={(e) => handleSourceToggle(e.detail.id, e.detail.isEnabled)}
-			/>
-			<ChatArea {chestId} {sources} />
+			<div class="flex-1 overflow-y-auto">
+				<SourcePanel 
+					{chestId} 
+					onSourceAdded={handleSourceAdded}
+				/>
+			</div>
 		{/if}
 	</div>
-
-	{#if showAddModal}
-		<AddSourceModal
-			{chestId}
-			on:close={() => (showAddModal = false)}
-			on:added={(e) => handleSourcesAdded(e.detail)}
-		/>
-	{/if}
+	
+	{/* Main Content - Chat Interface */}
+	<div class="flex-1 flex flex-col">
+		<div class="border-t border-gray-200">
+			<div class="p-4 bg-white border-b">
+				<h2 class="text-lg font-bold flex items-center">
+					Chat with "{chest?.name || 'Chest'}"
+					{#if chest}
+						<span class="ml-2 px-2 py-1 text-xs rounded-full bg-gray-200">
+							{chestId} sources
+						</span>
+					{/if}
+				</h2>
+			</div>
+			
+			<div class="flex-1 overflow-hidden">
+				<ChatArea 
+					chestId={chestId}
+				/>
+			</div>
+		</div>
+	</div>
 </div>

@@ -1,59 +1,41 @@
-"""FastAPI application entry point."""
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
-from api.routes import chests, chat, sources
-from config import get_settings
-from core.database import init_db
-from core.ml.embeddings import get_embedding_client
-from core.ml.llm import get_llm_client
+from core.database import engine, Base
+from api.routes import chests, sources, chat
 
-settings = get_settings()
-
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events."""
-    init_db()
-
-    try:
-        embedding_client = get_embedding_client()
-        embedding_client.warm_up()
-    except Exception:
-        pass
-
-    try:
-        llm_client = get_llm_client()
-        llm_client.warm_up()
-    except Exception:
-        pass
-
+    # Startup
     yield
-
+    # Shutdown
+    pass
 
 app = FastAPI(
-    title=settings.app_name,
-    description="RAG chatbot with local sources",
-    version="1.0.0",
-    lifespan=lifespan,
+    title="JETRAG API",
+    description="RAG Chatbot API for JETRAG application",
+    version="0.1.0",
+    lifespan=lifespan
 )
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"],  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(chests.router)
-app.include_router(sources.router)
-app.include_router(chat.router)
+# Include routers
+app.include_router(chests.router, prefix="/api/chests", tags=["chests"])
+app.include_router(sources.router, prefix="/api/sources", tags=["sources"])
+app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
+@app.get("/")
+async def root():
+    return {"message": "Welcome to JETRAG API"}

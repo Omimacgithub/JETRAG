@@ -1,0 +1,7 @@
+*.db
+*.sqlite3
+*venv/*
+src/frontend/node_modules/*
+*__pycache__*
+*.svelte-kit*
+*package-lock.json

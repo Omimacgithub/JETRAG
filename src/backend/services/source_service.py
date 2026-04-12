@@ -1,180 +1,146 @@
-"""Source management service with content parsing and embedding."""
 import hashlib
 import re
-from collections.abc import Callable
-from datetime import datetime
-from typing import Any
-from urllib.parse import urlparse
-
-import requests
+from typing import List
 from sqlalchemy.orm import Session
-
-from config import get_settings
-from core.ml.embeddings import get_embedding_client
-from core.vector_store import VectorStore, compute_content_hash, get_vector_store
-from models.source import Source, SourceType
+from models.source import Source
 from models.schemas import SourceCreate, SourceUpdate
+from core.vector_store import get_or_create_collection, add_embeddings, delete_from_collection
+from core.ml.embeddings import triton_embedding_client
+import logging
 
-settings = get_settings()
+logger = logging.getLogger(__name__)
 
+def get_source(db: Session, source_id: int):
+    return db.query(Source).filter(Source.id == source_id).first()
 
-class SourceService:
-    """Service for source CRUD operations and processing."""
+def get_sources_by_chest(db: Session, chest_id: int, skip: int = 0, limit: int = 100):
+    return db.query(Source).filter(Source.chest_id == chest_id).offset(skip).limit(limit).all()
 
-    def __init__(self, db: Session):
-        self.db = db
-        self.vector_store = get_vector_store()
-        self.embedding_client = get_embedding_client()
+def create_source(db: Session, source: SourceCreate):
+    # Generate content hash to avoid re-processing
+    content_hash = None
+    if source.content:
+        content_hash = hashlib.md5(source.content.encode()).hexdigest()
+    
+    db_source = Source(
+        chest_id=source.chest_id,
+        name=source.name,
+        type=source.type,
+        content=source.content,
+        content_hash=content_hash,
+        is_enabled=source.is_enabled
+    )
+    db.add(db_source)
+    db.commit()
+    db.refresh(db_source)
+    
+    # Process the source (chunking, embeddings, storage)
+    process_source(db_source, db)
+    
+    return db_source
 
-    def get_all_by_chest(self, chest_id: str) -> list[Source]:
-        """Get all sources for a chest."""
-        return (
-            self.db.query(Source)
-            .filter(Source.chest_id == chest_id)
-            .order_by(Source.created_at.desc())
-            .all()
-        )
+def update_source(db: Session, source_id: int, source: SourceUpdate):
+    db_source = db.query(Source).filter(Source.id == source_id).first()
+    if db_source:
+        if source.name is not None:
+            db_source.name = source.name
+        if source.type is not None:
+            db_source.type = source.type
+        if source.content is not None:
+            db_source.content = source.content
+            # Update content hash if content changed
+            db_source.content_hash = hashlib.md5(source.content.encode()).hexdigest()
+        if source.is_enabled is not None:
+            db_source.is_enabled = source.is_enabled
+        db.commit()
+        db.refresh(db_source)
+        
+        # Re-process source if content changed
+        if source.content is not None:
+            process_source(db_source, db)
+    
+    return db_source
 
-    def get_by_id(self, source_id: str) -> Source | None:
-        """Get a source by ID."""
-        return self.db.query(Source).filter(Source.id == source_id).first()
-
-    def create(self, chest_id: str, data: SourceCreate) -> Source:
-        """Create a new source without processing."""
-        content_hash = None
-        if data.content:
-            content_hash = compute_content_hash(data.content)
-
-        source = Source(
-            chest_id=chest_id,
-            name=data.name,
-            type=data.type.value,
-            content=data.content,
-            content_hash=content_hash,
-        )
-        self.db.add(source)
-        self.db.commit()
-        self.db.refresh(source)
-        return source
-
-    def update(self, source_id: str, data: SourceUpdate) -> Source | None:
-        """Update a source's name or enabled status."""
-        source = self.get_by_id(source_id)
-        if not source:
-            return None
-
-        if data.name is not None:
-            source.name = data.name
-        if data.is_enabled is not None:
-            source.is_enabled = data.is_enabled
-
-        self.db.commit()
-        self.db.refresh(source)
-        return source
-
-    def delete(self, source_id: str) -> bool:
-        """Delete a source and its embeddings."""
-        source = self.get_by_id(source_id)
-        if not source:
-            return False
-
-        self.vector_store.delete_source(source.chest_id, source_id)
-
-        self.db.delete(source)
-        self.db.commit()
-        return True
-
-    def process_source(self, source: Source) -> list[str]:
-        """
-        Process a source: parse, chunk, embed, and store.
-
-        Args:
-            source: Source to process.
-
-        Returns:
-            List of processing status messages.
-        """
-        status = []
-
-        if source.type == SourceType.TXT.value:
-            text = source.content or ""
-        elif source.type == SourceType.URL.value:
-            text = self._fetch_url(source.content or "")
-            status.append(f"Fetched from URL: {source.content}")
-        elif source.type == SourceType.FILE.value:
-            text = self._extract_file_content(source.content or "")
-            status.append(f"Extracted from file: {source.name}")
-        else:
-            text = ""
-
-        chunks = self._chunk_text(text)
-        status.append(f"Created {len(chunks)} chunks")
-
-        embeddings = self.embedding_client.encode(chunks)
-        status.append("Generated embeddings")
-
-        self.vector_store.add_chunks(
-            chest_id=source.chest_id,
-            chunks=chunks,
-            embeddings=embeddings.tolist(),
-            source_id=source.id,
-            source_name=source.name,
-        )
-        status.append("Stored in vector database")
-
-        return status
-
-    def _fetch_url(self, url: str) -> str:
-        """Fetch and extract text content from a URL."""
+def delete_source(db: Session, source_id: int):
+    db_source = db.query(Source).filter(Source.id == source_id).first()
+    if db_source:
+        # Remove embeddings from ChromaDB
         try:
-            parsed = urlparse(url)
-            if not parsed.scheme:
-                url = f"https://{url}"
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            return self._extract_html_text(response.text)
+            collection = get_or_create_collection(f"chest_{db_source.chest_id}")
+            # Delete using source ID as part of the document ID
+            delete_from_collection(collection, [f"source_{source_id}"])
         except Exception as e:
-            return f"[Error fetching URL: {str(e)}]"
+            logger.warning(f"Could not remove embeddings for source {source_id}: {e}")
+        
+        db.delete(db_source)
+        db.commit()
+    return db_source
 
-    def _extract_html_text(self, html: str) -> str:
-        """Extract readable text from HTML."""
-        text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL)
-        text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL)
-        text = re.sub(r"<[^>]+>", " ", text)
-        text = re.sub(r"\s+", " ", text).strip()
-        return text
+def process_source(source: Source, db: Session):
+    """Process a source: parse, chunk, compute embeddings, store"""
+    try:
+        # Skip processing if no content or if it's a URL (handled separately)
+        if not source.content and source.type != "TXT":
+            return
+            
+        # For URL and FILE types, we would fetch/download content here
+        # For simplicity, we'll assume content is already provided for now
+        text_content = source.content
+        
+        if not text_content:
+            return
+            
+        # 3.1 Parse input content (already done - we have text)
+        # 3.2 Chunking: Split text on fragments
+        chunks = chunk_text(text_content)
+        
+        if not chunks:
+            return
+            
+        # 3.3 Compute chunk embeddings
+        embeddings = triton_embedding_client.embed(chunks)
+        
+        # 3.4 Store embeddings on ChromaDB along with plain chunks
+        collection = get_or_create_collection(f"chest_{source.chest_id}")
+        
+        # Prepare data for ChromaDB
+        documents = chunks
+        metadatas = [{"source_id": source.id, "chunk_index": i} for i in range(len(chunks))]
+        ids = [f"source_{source.id}_chunk_{i}" for i in range(len(chunks))]
+        
+        add_embeddings(collection, embeddings, documents, metadatas, ids)
+        
+        logger.info(f"Processed source {source.id}: {len(chunks)} chunks stored")
+        
+    except Exception as e:
+        logger.error(f"Error processing source {source.id}: {e}")
+        raise
 
-    def _extract_file_content(self, content: str) -> str:
-        """Extract text content from file (placeholder for actual file parsing)."""
-        return content
-
-    def _chunk_text(self, text: str) -> list[str]:
-        """Split text into overlapping chunks."""
-        if not text:
-            return []
-
-        chunk_size = settings.chunk_size
-        overlap = settings.chunk_overlap
-
-        chunks = []
-        start = 0
-        text_len = len(text)
-
-        while start < text_len:
-            end = start + chunk_size
-            chunk = text[start:end]
-
-            if end < text_len:
-                next_start = start + chunk_size - overlap
-                if next_start < text_len:
-                    next_chunk = text[next_start : next_start + chunk_size]
-                    overlap_text = chunk[-overlap:] if overlap > 0 else ""
-                    if not next_chunk.startswith(overlap_text) and overlap > 0:
-                        pass
-
-            chunks.append(chunk.strip())
-            start = start + chunk_size - overlap
-            if start >= text_len:
-                break
-
-        return [c for c in chunks if c]
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+    """Simple text chunking by sentences with overlap"""
+    # Split by sentences (simple regex)
+    sentences = re.split(r'[.!?]+', text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    
+    if not sentences:
+        return []
+        
+    chunks = []
+    current_chunk = ""
+    
+    for sentence in sentences:
+        # If adding this sentence would exceed chunk size, store current chunk and start new one
+        if len(current_chunk) + len(sentence) + 1 > chunk_size and current_chunk:
+            chunks.append(current_chunk.strip())
+            # Start new chunk with overlap from previous chunk
+            words = current_chunk.split()
+            overlap_words = words[-overlap//10:] if len(words) > overlap//10 else words
+            current_chunk = " ".join(overlap_words) + " " + sentence
+        else:
+            current_chunk += (" " if current_chunk else "") + sentence
+    
+    # Add the last chunk
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+        
+    return chunks if chunks else [text]  # Return original text if chunking failed

@@ -1,72 +1,55 @@
-"""Triton client for embedding model inference."""
+import httpx
 import numpy as np
-import tritonclient.http as triton_http
-from tritonclient.utils import np_to_triton_dtype
+import logging
+from config import settings
 
-from config import get_settings
+logger = logging.getLogger(__name__)
 
-settings = get_settings()
+class TritonEmbeddingClient:
+    def __init__(self):
+        self.server_url = settings.TRITON_SERVER_URL
+        self.model_name = settings.TRITON_EMBEDDING_MODEL_NAME
+        self.embeddings_url = f"{self.server_url}/v2/models/{self.model_name}/infer"
+        
+    async def embed(self, texts: list[str]):
+        """Get embeddings for a list of texts using Triton"""
+        try:
+            # Prepare input for Triton inference server
+            # Triton expects a specific format for text inputs
+            input_data = {
+                "inputs": [
+                    {
+                        "name": "TEXT",
+                        "shape": [len(texts), 1],
+                        "datatype": "BYTES",
+                        "data": [[text] for text in texts]  # Triton expects list of lists
+                    }
+                ],
+                "outputs": [
+                    {
+                        "name": "EMBEDDING"
+                    }
+                ]
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.embeddings_url,
+                    json=input_data,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                # Extract embeddings from result
+                embeddings_data = result["outputs"][0]["data"]
+                # Convert to numpy array and reshape
+                embeddings = np.array(embeddings_data).reshape(len(texts), -1)
+                return embeddings.tolist()  # Return as list for JSON serialization
+                
+        except Exception as e:
+            logger.error(f"Error calling Triton embedding service: {e}")
+            raise
 
-
-class EmbeddingClient:
-    """Client for Triton inference server embedding model."""
-
-    def __init__(self, url: str | None = None):
-        self.url = url or settings.triton_url
-        self.model_name = settings.embedding_model_name
-        self.client = triton_http.InferenceServerClient(
-            url=self.url,
-            verbose=False,
-        )
-        self._warm_up_done = False
-
-    def warm_up(self) -> None:
-        """Pre-warm the model to avoid first-request latency."""
-        if self._warm_up_done:
-            return
-        dummy_text = ["warmup"]
-        self.encode(dummy_text)
-        self._warm_up_done = True
-
-    def encode(self, texts: list[str]) -> np.ndarray:
-        """
-        Encode texts into embedding vectors.
-
-        Args:
-            texts: List of text strings to encode.
-
-        Returns:
-            numpy array of shape (len(texts), embedding_dim)
-        """
-        inputs = triton_http.InferInput(
-            "TEXT",
-            [len(texts)],
-            np_to_triton_dtype(np.object_),
-        )
-        inputs.set_data_from_numpy(np.array(texts, dtype=np.object_))
-
-        outputs = triton_http.InferRequestedOutput("EMBEDDINGS")
-
-        results = self.client.infer(
-            model_name=self.model_name,
-            inputs=[inputs],
-            outputs=[outputs],
-        )
-
-        embeddings = results.as_numpy("EMBEDDINGS")
-        return embeddings
-
-    def encode_query(self, query: str) -> np.ndarray:
-        """Encode a single query string."""
-        return self.encode([query])[0]
-
-
-embedding_client: EmbeddingClient | None = None
-
-
-def get_embedding_client() -> EmbeddingClient:
-    """Get or create the global embedding client."""
-    global embedding_client
-    if embedding_client is None:
-        embedding_client = EmbeddingClient()
-    return embedding_client
+# Global instance
+triton_embedding_client = TritonEmbeddingClient()

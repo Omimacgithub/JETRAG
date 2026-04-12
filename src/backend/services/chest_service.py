@@ -1,63 +1,33 @@
-"""Chest business logic service."""
 from sqlalchemy.orm import Session
-
-from core.vector_store import get_vector_store
 from models.chest import Chest
-from models.schemas import ChestCreate, ChestResponse, ChestUpdate
+from models.schemas import ChestCreate, ChestUpdate
+from typing import List, Optional
 
+def get_chest(db: Session, chest_id: int):
+    return db.query(Chest).filter(Chest.id == chest_id).first()
 
-class ChestService:
-    """Service for chest CRUD operations."""
+def get_chests(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(Chest).offset(skip).limit(limit).all()
 
-    def __init__(self, db: Session):
-        self.db = db
-        self.vector_store = get_vector_store()
+def create_chest(db: Session, chest: ChestCreate):
+    db_chest = Chest(name=chest.name)
+    db.add(db_chest)
+    db.commit()
+    db.refresh(db_chest)
+    return db_chest
 
-    def get_all(self) -> list[ChestResponse]:
-        """Get all chests ordered by most recent."""
-        chests = (
-            self.db.query(Chest)
-            .order_by(Chest.updated_at.desc())
-            .all()
-        )
-        return [ChestResponse.model_validate(c) for c in chests]
+def update_chest(db: Session, chest_id: int, chest: ChestUpdate):
+    db_chest = db.query(Chest).filter(Chest.id == chest_id).first()
+    if db_chest:
+        if chest.name is not None:
+            db_chest.name = chest.name
+        db.commit()
+        db.refresh(db_chest)
+    return db_chest
 
-    def get_by_id(self, chest_id: str) -> ChestResponse | None:
-        """Get a chest by ID."""
-        chest = self.db.query(Chest).filter(Chest.id == chest_id).first()
-        if chest is None:
-            return None
-        return ChestResponse.model_validate(chest)
-
-    def create(self, data: ChestCreate) -> ChestResponse:
-        """Create a new chest."""
-        chest = Chest(name=data.name)
-        self.db.add(chest)
-        self.db.commit()
-        self.db.refresh(chest)
-        return ChestResponse.model_validate(chest)
-
-    def update(self, chest_id: str, data: ChestUpdate) -> ChestResponse | None:
-        """Update an existing chest."""
-        chest = self.db.query(Chest).filter(Chest.id == chest_id).first()
-        if not chest:
-            return None
-
-        if data.name is not None:
-            chest.name = data.name
-
-        self.db.commit()
-        self.db.refresh(chest)
-        return ChestResponse.model_validate(chest)
-
-    def delete(self, chest_id: str) -> bool:
-        """Delete a chest and its associated data."""
-        chest = self.get_by_id(chest_id)
-        if not chest:
-            return False
-
-        self.vector_store.delete_collection(chest_id)
-
-        self.db.delete(chest)
-        self.db.commit()
-        return True
+def delete_chest(db: Session, chest_id: int):
+    db_chest = db.query(Chest).filter(Chest.id == chest_id).first()
+    if db_chest:
+        db.delete(db_chest)
+        db.commit()
+    return db_chest

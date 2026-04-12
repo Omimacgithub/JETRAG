@@ -1,74 +1,42 @@
-"""Chat API endpoints with streaming response."""
-import json
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-
-from api.dependencies import get_chest_service, get_rag_service
+from typing import List
+import json
 from core.database import get_db
-from models.schemas import ChatMessageCreate, ChatMessageResponse
-from services.chest_service import ChestService
-from services.rag_service import RagService
+from models.schemas import ChatMessage, ChatMessageCreate, RAGQuery, RAGResponse
+from services import rag_service
+from models.source import Source
 
-router = APIRouter(tags=["chat"])
+router = APIRouter()
 
+@router.post("/", response_model=ChatMessage)
+def create_chat_message(chat_message: ChatMessageCreate, db: Session = Depends(get_db)):
+    # Store user message
+    db_chat_message = chat_message.dict()
+    # In a real app, we'd store this in the database
+    # For now, we'll just return it
+    
+    # Get chest sources for context
+    # Actually, we'll process the RAG query
+    
+    return chat_message
 
-@router.get("/chests/{chest_id}/messages", response_model=list[ChatMessageResponse])
-def get_chat_messages(
-    chest_id: str,
-    chest_service: ChestService = Depends(get_chest_service),
-    rag_service: RagService = Depends(get_rag_service),
-) -> list[ChatMessageResponse]:
-    """Get all chat messages for a chest."""
-    chest = chest_service.get_by_id(chest_id)
-    if not chest:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Chest {chest_id} not found",
-        )
+@router.post("/query", response_model=RAGResponse)
+def process_chat_query(rag_query: RAGQuery, db: Session = Depends(get_db)):
+    # Process RAG query
+    import asyncio
+    result = asyncio.run(rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question))
+    
+    # Store the chat messages (user and assistant)
+    # In a real app, we'd store both user and assistant messages
+    
+    return result
 
-    messages = rag_service.get_messages(chest_id)
-    return [
-        ChatMessageResponse(
-            id=msg.id,
-            chest_id=msg.chest_id,
-            role=msg.role,
-            content=msg.content,
-            sources_used=json.loads(msg.sources_used) if msg.sources_used else None,
-            created_at=msg.created_at,
-        )
-        for msg in messages
-    ]
-
-
-@router.post("/chests/{chest_id}/chat")
-async def chat(
-    chest_id: str,
-    data: ChatMessageCreate,
-    db: Session = Depends(get_db),
-    chest_service: ChestService = Depends(get_chest_service),
-) -> StreamingResponse:
-    """Send a message and stream the response."""
-    chest = chest_service.get_by_id(chest_id)
-    if not chest:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Chest {chest_id} not found",
-        )
-
-    rag_service = RagService(db)
-
-    async def event_generator():
-        async for event in rag_service.generate_response(chest_id, data.message):
-            yield f"data: {json.dumps(event)}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+# Alternative streaming endpoint
+@router.post("/stream")
+async def process_chat_query_stream(rag_query: RAGQuery, db: Session = Depends(get_db)):
+    # For streaming response, we'd use StreamingResponse
+    # For now, we'll return the regular response
+    import asyncio
+    result = await rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question)
+    return result

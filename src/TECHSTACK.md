@@ -1,16 +1,16 @@
-# Stack Tecnológico
+# Tech stack
 
-## Backend & RAG
+## Backend and RAG
 
-| Componente | Tecnología |
+| Component | Technology |
 |------------|------------|
 | **RAG Framework** | **LlamaIndex** |
 | **Backend Framework** | **FastAPI** |
 | **ORM** | **SQLAlchemy + SQLite** |
 
-## Modelos de ML
+## ML models
 
-| Componente | Modelo |
+| Component | Model |
 |------------|--------|
 | **LLM Chat** | **Phi-3-mini-4k-instruct** (3.8B params) |
 | **Embeddings** | **all-MiniLM-L6-v2** (22M params) |
@@ -18,14 +18,14 @@
 
 ## Database
 
-| Tipo | Tecnología |
+| Type | Technology |
 |------|------------|
 | **Vector Store** | **ChromaDB** |
 | **Document Store** | **SQLite** |
 
 ## Frontend
 
-| Componente | Tecnología |
+| Component | Technology |
 |------------|------------|
 | **Framework** | **Svelte + SvelteKit** |
 | **Styling** | **TailwindCSS** (CDN/ JIT) |
@@ -33,7 +33,7 @@
 
 ## Infrastructure
 
-| Componente | Tecnología |
+| Component | Technology |
 |------------|------------|
 | **Container Runtime** | **Docker + BuildKit** |
 | **Orchestration** | **Docker Compose** |

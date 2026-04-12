@@ -1,22 +1,22 @@
-# Árbol de ficheros (la raíz es este directorio)
+# Tree file structure
 
 ```
-├── docker-compose.yml              # Orquestación de servicios
-├── Dockerfile                      # Imagen base ARM64
-├── .env                            # Variables de entorno
+├── docker-compose.yml              
+├── Dockerfile                      # ARM64 image
+├── .env                            
 │
-├── backend/                        # Servicio FastAPI
+├── backend/                        # FastAPI
 │   ├── __init__.py
 │   ├── main.py                     # Entry point, CORS, lifespan
-│   ├── config.py                   # Settings con pydantic
+│   ├── config.py                   # Settings with pydantic
 │   ├── api/
 │   │   ├── __init__.py
 │   │   ├── routes/
 │   │   │   ├── __init__.py
-│   │   │   ├── chests.py           # CRUD cofres
-│   │   │   ├── sources.py          # CRUD fuentes
+│   │   │   ├── chests.py           # chests CRUD 
+│   │   │   ├── sources.py          # sources CRUD
 │   │   │   └── chat.py             # Streaming chat endpoint
-│   │   └── dependencies.py         # Inyección de dependencias
+│   │   └── dependencies.py         # Dependency injection
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── database.py             # SQLite + SQLAlchemy session
@@ -27,14 +27,14 @@
 │   │       └── embeddings.py       # Triton client (Embeddings)
 │   ├── models/
 │   │   ├── __init__.py
-│   │   ├── chest.py                # Modelo SQLAlchemy: Chest
-│   │   ├── source.py               # Modelo SQLAlchemy: Source
+│   │   ├── chest.py                # SQLAlchemy model: Chest
+│   │   ├── source.py               # SQLAlchemy model: Source
 │   │   └── schemas.py              # Pydantic schemas
 │   └── services/
 │       ├── __init__.py
-│       ├── chest_service.py        # Lógica de cofres
-│       ├── source_service.py       # Lógica de fuentes (parsers)
-│       └── rag_service.py          # Pipeline RAG (query + retrieve + generate)
+│       ├── chest_service.py        # chest logic
+│       ├── source_service.py       # sources logic (parsers)
+│       └── rag_service.py          # RAG pipeline
 │
 ├── frontend/                       # SvelteKit app
 │   ├── package.json
@@ -59,13 +59,13 @@
 │   │   │       └── client.ts       # API client wrapper
 │   │   └── routes/
 │   │       ├── +layout.svelte
-│   │       ├── +page.svelte        # Lista de cofres (MAIN)
+│   │       ├── +page.svelte        # Chests list (CHESTS PAGE)
 │   │       └── chest/
 │   │           └── [id]/
-│   │               └── +page.svelte  # Chat view (CHAT)
+│   │               └── +page.svelte  # Chat view (CHAT PAGE)
 │   └── static/
 │
-├── triton/                         # Model repository (volumen Docker)
+├── triton/                         # Model repository (Docker volume)
 │   ├── llm/
 │   │   └── phi3/                   # TensorRT-LLM engine
 │   │       ├── config.pbtxt
@@ -75,7 +75,7 @@
 │           ├── config.pbtxt
 │           └── 1/
 │
-├── data/                           # Volumen persistente
+├── data/                           # Persistent volume
 │   ├── sqlite/
 │   │   └── jetrag.db
 │   └── chroma/

@@ -1,84 +1,86 @@
-# Flujo Principal: Crear Cofre y Chatear
-
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                              USUARIO                                           │
+│                                 USER                                         │
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  PASO 1: Página Principal (MAIN view)                                         │
+│  STEP 1: CHESTS PAGE (Starting page)                                         │
 │  ─────────────────────────────────                                           │
-│  Usuario ve lista de cofres existentes                                        │
-│  └─► Acciones: Ver detalle / Crear nuevo / Eliminar                          │
+│  User see list of created chests and button to create new ones               │
+│  └─► Actions: See chest details / Create new chest / Delete chest            │
 └──────────────────────────────────────────────────────────────────────────────┘
                                     │
           ┌─────────────────────────┴─────────────────────────┐
           │                                                   │
           ▼                                                   ▼
 ┌─────────────────────┐                         ┌─────────────────────┐
-│  Crear nuevo cofre  │                         │  Seleccionar cofre  │
-│  (sin fuentes)      │                         │                     │
-└──────────┬──────────┘                         └──────────┬──────────┘
+│  Create new chest   │                         │  See chest details  │
+│  (Empty set of sources)      │                │                     │
+└──────────┬──────────┘                         └─────────┬──────────┘
            │                                              │
            └────────────────────┬─────────────────────────┘
                                 ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  PASO 2: Chat View (CHAT view)                                               │
+│  STEP 2: CHAT PAGE                                                           │
 │  ─────────────────────────────────                                           │
-│  Panel lateral (izq): Gestión de fuentes                                     │
-│  Área principal: Chat con el LLM                                             │
+│  Left panel: Chest information sources management                            │
+│  Main area: Chatbot                                                          │ 
+|  Top right corner: create new chest                                          │
 └──────────────────────────────────────────────────────────────────────────────┘
                                 │
-          ┌─────────────────────┴─────────────────────┐
-          │                                           │
-          ▼                                           ▼
-┌─────────────────────┐                 ┌─────────────────────┐
-│  Añadir fuente      │                 │  Enviar mensaje     │
-│  (TXT/URL/FILE)     │                 │  al chat            │
-└──────────┬──────────┘                 └──────────┬──────────┘
-           │                                      │
-           ▼                                      │
-┌─────────────────────────────────────┐          │
-│  PASO 3: Procesamiento de fuente    │          │
+          ┌─────────────────────┴─────────────────────┬──────────────────────────────┐
+          │                                           │                              │
+          ▼                                           ▼                              ▼
+┌─────────────────────┐                 ┌─────────────────────┐           ┌─────────────────────┐ 
+│  (Left panel) add source │            │  (Main area) Send   │           │  Create new chest   │
+│  (TXT/URL/FILE)     │                 │  message to chatbot │           │  (Empty set of sources)      │
+└──────────┬──────────┘                 └────────┬────────────┘           └──────────┬──────────┘
+           │                                     │                                   ▼
+           ▼                                     │                         ┌─────────────────────┐
+┌─────────────────────────────────────┐          │                         │  GO BACK TO STEP 2  │
+│  STEP 3: Source processing          │          │                         └─────────────────────┘
 │  ─────────────────────────────────  │          │
-│  3.1 Parsear contenido              │          │
-│      └─► Extraer texto              │          │
-│  3.2 Chunking (RecursiveCharacter)  │          │
-│      └─► Split en fragments        │          │
-│  3.3 Generar embeddings            │          │
-│      └─► Triton → all-MiniLM-L6    │          │
-│  3.4 Almacenar en ChromaDB          │          │
-│      └─► Colección: chest_{id}     │          │
-│  3.5 Guardar metadata en SQLite     │          │
+│  3.1 Parse input content            │          │
+│      └─► Extract text               │          │
+│  3.2 Chunking                       │          │
+│      └─► Split text on fragments    │          │
+│  3.3 Compute chunk embeddings       │          │
+│      └─► Triton → all-MiniLM-L6     │          │
+│  3.4 Store embeddings on ChromaDB   │          │
+│   along with plain chunks           │          │
+│      └─► Add to chest db model      │          │
+│  3.5 Store metadata on SQLite       │          │
+│  3.6 Go back to step 2 with new sources│       │
 └─────────────────────────────────────┘          │
-                                                  ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  PASO 4: Pipeline RAG (al enviar mensaje)                                    │
-│  ────────────────────────────────────                                       │
-│                                                                              │
-│    Usuario pregunta                                                          │
-│         │                                                                   │
-│         ▼                                                                   │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
-│  │ Retrieve (RAG)  │───►│   Augment       │───►│   Generate      │         │
-│  │                 │    │                 │    │                 │         │
-│  │ 4.1 Query emb   │    │ 4.2 Build ctx   │    │ 4.3 LLM prompt  │         │
-│  │    └─► Triton   │    │    └─► System   │    │    └─► Triton   │         │
-│  │ 4.3 Vector search│    │       + User   │    │    + streaming  │         │
-│  │    └─► ChromaDB │    │       + Context │    │    + sources    │         │
-│  │ 4.4 Top-K chunks│    │ 4.4 Inject refs │    │                 │         │
-│  │ 4.5 Filter by   │    └─────────────────┘    └─────────────────┘         │
-│  │      enabled    │                                                    │
-│  │      sources    │                                                    │
-│  └─────────────────┘                                                    │
-└──────────────────────────────────────────────────────────────────────────────┘
+                                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 4: RAG PIPELINE (when messages are sent)                                          │
+│  ────────────────────────────────────                                                   │
+│                                                                                         │
+│    User asks                                                                            │
+│         │                                                                               │
+│         ▼                                                                               │
+│  ┌──────────────────────────────────┐                                                   │
+│  │ RAG                              │                                                   │
+│  │                                  │                                                   │
+│  │ 4.1 Compute question embeddings  │                                                   │
+│  │    └─► Triton                    │                                                   │
+│  │ 4.2 Vector search                │                                                   │
+│  │    └─► ChromaDB                  │                                                   │
+│  │ 4.3 Retrieve Top-K chunks        │                                                   │
+│  │ 4.4 Filter by enabled sources    │                                                   │
+│  │ 4.5 Use plain chunks with        │                                                   │
+│   │ user query for LLM answer        │                                                   │
+│  │                                  │                                                   │
+│  └──────────────────────────────────┘                                                   │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  PASO 5: Renderizar respuesta                                                │
+│  STEP 5: Answer rendering                                                    │
 │  ───────────────────────────                                                 │
-│  Streaming del texto → Mostrar en burbuja de chat                            │
-│  Referencias a fuentes → Citas clickeables                                   │
+│  Text streaming → Display inside bubble on chat                              │
+│  Source refs → Clickable cites                                               │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```

@@ -1,41 +1,59 @@
-Actúa como un desarrollador senior especializado en FastAPI con Svelte y ChromaDB.
+Act like a Senior software developer specialized on FastAPI with Svelte and ChromaDB.
 
-IMPORTANTE: si ves que algún aspecto que se comenta no coincide con lo que se dice en el resto de ficheros .md que se mencionan en este AGENTS.md, pausa el desarrollo, coméntame las incoherencias que hayas encontrado y espera a mi confirmación antes de continuar.
+IMPORTANT: if you find that any aspect commented in this file is not aligned with the .md files mentioned on this AGENTS.md, pause the process, tell me your incoherent founds and wait to my confirmation before continuing.
 
-## Contexto del proyecto
-JETRAG es una aplicación WEB que permite a los usuarios interactuar con un chatbot RAG en el que utilizan cofres (concepto que me he inventado para denominar a conjuntos de fuentes de información como texto plano, URLs o ficheros) de manera local, lo que otorga seguridad especialmente cuando se trata con documentos críticos para una empresa.
+## Project context
+JETRAG is a web app that let users interact with a RAG chatbot which use chests (concept invented by me to call source information sets like plain text, URLs or files). The deployment and execution of the chatbot is done completely locally, which provides security, specially when critical documents are involved.
 
-JETRAG debe permitir su despliegue en sistemas NVIDIA Jetson con 8 GB de RAM, por lo que su diseño e implementación debe ser lo más simple y eficiente posible. Todo el código debe de ejecutarse encima de contenedores de Docker, el contenedor de backend (el que ejecuta las inferencias de la LLM y el modelo de embeddings para RAG) debe de tener acceso directo a la GPU de NVIDIA de la Jetson.
+JETRAG should allow its deployment on 8 GB RAM NVIDIA Jetson devices (ARM64 with NVIDIA GPU), hence the design and implementation should be as simple and efficient as posible. All the code should run inside Docker containers, the backend container (which runs LLM inferences and embedding model for RAG) should have direct access to NVIDIA Jetson GPU.
 
-JETRAG es una aplicación WEB que mediante una API REST realiza una gestión de los cofres y sus fuentes (almacenados en una VectorDB).
+JETRAG web app should use REST APIs for interaction with the chatbot and to manage information sources for every chest. Information sources are splitted in chunks, then chunk embeddings are computed and stored on a VectorDB (ChromaDB). Chest and information sources data are stored in SQLite models.
 
-Necesito que implementes lo siguiente:
+I want you to implement the following:
 
-## Funcionalidad
-La app (JETRAG) se compone de dos ventanas, el flujo de cada ventana y entre ventanas se muestra en la sección "Flujo Principal: Crear Cofre y Chatear" del fichero APPFLOW.md. El fichero ../design/prototypes/MAIN.png muestra un boceto de la ventana del PASO 1 (el boceto es meramente orientativo, puedes adaptar el frontend acorde a tus preferencias), dicha ventana muestra la lista de cofres creados recuperados de la db de SQLite mediante un GET y muestra un botón para crear nuevos cofres, que se registran en la db de SQLite mediante un POST y que hace que la app cambie a la ventana del PASO 2. Cada cofre de la lista de cofres creados es un widget, que al enfocarse con el cursor o teclado permite eliminarlo de la db de SQLite mediante un DELETE o modificar su nombre mediante un PATCH. Si se pulsa en uno de los widgets, se realiza un GET para recuperar la lista de fuentes de la db de SQLite del cofre del widget y la app cambia a la ventana del PASO 2.
+## Functionality
+JETRAG web app consist on two main windows, one for displaying and select existing chests or create new ones (called CHESTS PAGE for now, this is the starting window), and the other for chatting and managing information sources of a specific chest (called CHAT PAGE for now). Every window and between windows flow can be found on APPFLOW.md file on current dir. File ../design/prototypes/MAIN.png shows a CHESTS PAGE concept (its just a concept, you can adapt it according to your needs). Starting on APPFLOW.md STEP 1 (CHESTS PAGE), existing chests list is retrieved from backend (SQLite db) using a GET request. Create new chest button asks the user for new chest name, then it is registered on SQLite db through POST request and app flow changes to STEP 2 with new chest content (initially an empty set of sources). Each listed chest on CHESTS PAGE is an item which, if focused with cursor or keyboard, can be deleted from SQLite db through DELETE request or modify its name with PATCH request. If user clicks on a chest item, app flow changes to STEP 2 with chest sources retrieved from SQLite db with GET request.
 
-El fichero ../design/prototypes/CHAT.png muestra un boceto de la ventana del PASO 2 (el boceto es meramente orientativo, puedes adaptar el frontend acorde a tus preferencias). Dicha ventana contiene un botón para crear un cofre, si se pulsa, envía un POST para crear un nuevo cofre en la db de SQLite y actualiza la ventana con la lista de fuentes del nuevo cofre (inicialmente vacía). El panel lateral izquierdo permite gestionar las fuentes del cofre, contiene un botón para comprimir dicho panel y un botón para añadir nuevas fuentes, que muestra una ventana emergente que lleva al PASO 3 del diagrama de flujo. En dicha ventana, el usuario puede añadir varias fuentes de información en forma de texto plano, URLs o ficheros (el usuario mediante un botón puede ir subiendo fuentes, que se almacenen en un localstorage de JavaScript). Finalmente, la ventana contiene un botón de confirmación, si el usuario lo pulsa, la lista de fuentes del localstorage de Javascript se lleva al backend para ser procesada en los pasos del PASO 3, como el proceso puede llevar varios segundos, se debe de mostrar un círculo de carga que indique al usuario que se está procesando la información. Tras finalizar los pasos del PASO 3, la app vuelve a la ventana del PASO 2 realizando un GET de la lista de fuentes del cofre para reflejar la lista actualizada. Justo debajo del botón de añadir fuentes, se muestra la lista de fuentes, cada fuente es un widget que al enfocarse con el cursor o teclado permite eliminarlo de la db de SQLite mediante un DELETE, modificar su nombre mediante un PATCH o habilitar su uso en la respuesta del LLM por medio de una check box. El área principal muestra la conversación, el usuario envía una pregunta y se ejecutan los pasos del PASO 4 (que son los pasos de un sistema RAG convencional). Finalmente, se llega al PASO 5, que representa la respuesta del LLM.
+File ../design/prototypes/CHAT.png shows a CHAT PAGE concept (its just a concept, you can adapt it according to your needs). APPFLOW.md STEP 2 shows CHAT PAGE window, create new chest button asks the user for new chest name, then it is registered on SQLite db through POST request and app flow remains on STEP 2 with new chest content (initially an empty set of sources). Left panel displays existing chest sources and "add new sources" button that if pressed, user can input data in form of plain text, URL or file (several inputs can be stored using javascript localstorage). When user confirms input data, then app flow changes to STEP 3, which receives user input data on backend through POST request. Because STEP 3 can take quite seconds, the web interface should display a charge circle to tell user that processing is taking place. When STEP 3 finishes, app flow goes back to STEP 2 with updated chest sources list through GET request. Every displayed source is an item which, if focused with cursor or keyboard, can be deleted from SQLite db through DELETE request or enable its use on LLM chat answer through a check box. CHAT PAGE main area shows chat messages where user can ask to the LLM. When user sends a question to the LLM, then app flow changes to STEP 4 (which performs a conventional RAG pipeline). Finally, STEP 5 is reached when LLM returns the answer.
 
-El software debe de ejecutarse encima de contenedores de Docker, el fichero DOCKERARCH.md especifica los contenedores en los que se divide la aplicación, cómo se conectan entre sí y los volúmenes a crear que se explican a continuación:
-- ./data/sqlite/jetrag.db: db de SQLite (esquema del fichero SQLSCHEMA.md).
-- ./data/chroma/: base de datos vectorial de ChromaDB.
-- ./triton/models/: modelos en su versión optimizada mediante TensorRT.
-Para crear el fichero docker-compose.yml, puedes seguir la configuración que se muestra en la sección "Fichero docker-compose.yml" del fichero DOCKERARCH.md.
+App should run inside Docker containers, DOCKERARCH.md file on current dir shows app container division, how containers are connected and the following persistent volumes used:
+- ./data/sqlite/jetrag.db: SQLite db (for models following the schema specified on SQLSCHEMA.md file on current dir).
+- ./data/chroma/: ChromaDB vector db.
+- ./triton/models/: TensorRT optimized LLM and embeddings models.
+When you create docker-compose.yml file, you can follow the configuration on section "docker-compose.yml" from DOCKERARCH.md file on current dir.
 
 
-## Contexto técnico
-- Stack tecnológico: puedes verlo en el fichero STACK.md.
-- Base de datos: puedes ver el esquema en el fichero SQLSCHEMA.md.
-- Convenciones del proyecto: Usa convenciones estándar.
+## Technical context
+- Stack: can be saw on TECHSTACK.md file on current dir.
+- Database tables: can be saw on SQLSCHEMA.md file on current dir.
+- Proyect conventions: Use standard conventions.
 
-## Requisitos del código
-1.Código listo para producción, no ejemplos simplificados.
-2.Incluir validación de inputs y manejo de errores completo.
-3.Aplicar el principio de responsabilidad única.
-4.Añadir tipos/interfaces cuando el lenguaje lo permita.
-5.Incluir comentarios SÓLO donde la lógica no sea obvia.
-6.Si necesitas alguna dependencia externa, indícala al inicio con el comando de instalación.
-7.Los ficheros Dockerfile que consideres crear deben de reducir lo máximo posible el tamaño de la imagen resultante.
+## Code requirements
+1.Production ready code, don't provide simplified examples.
+2.Include input validation and complete error management.
+3.Apply single responsibility principle.
+4.Add types/interfaces when posible.
+5.Include comments ONLY where code logic isn't obvious.
+6.If any external dependency is needed, point it on the beginning with an installation command.
+7.Dockerfile files you create should reduce image size to the minimum.
 
-## Formato de entrega
-Entrega el código en bloques separados por archivo, en el fichero TREE.md tienes un ejemplo de árbol de ficheros que puedes utilizar COMO BASE. Indica la ruta de cada archivo como encabezado. Al final, incluye una sección breve "Como probarlo" con los pasos exactos. También indica los comandos que se deben de ejecutar para compilar los modelos de LLM y de embeddings en una versión optimizada de TensorRT.
+## Sending format
+Write the code on separated blocks by file, TREE.md file on current dir provides an example tree file structure you can use as guidance. Point route of every file as a header.
+
+## Relevant implementation notes
+To not commit the same mistakes from previous builds, I share to you the following aspects you should consider when building the code:
+- Before using npm ci command, be sure that package-lock.json file exists.
+- Check that sveltekit and vite config support TypeScript code compilation.
+- When defining a new API entry point on FastAPI, inputs and outputs should correspond to primitive types and/or Pydantic models.
+- DON'T USE NumPy version 2.
+
+## README.md
+Create a README.md file with the following:
+- Software requirements section.
+- Steps to deploy the app locally and in Docker containers (provide steps to create a python3 venv).
+- Specify URLs to connect with services.
+- Add any other relevant aspect.
+
+## Last steps
+- Be sure that backend and frontend code are fully integrated between them. 
+- Check that all sections of this AGENTS.md are fulfilled.

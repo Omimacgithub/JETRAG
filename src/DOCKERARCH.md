@@ -1,4 +1,4 @@
-# Esquema de conexión de contenedores Docker
+# App container division
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        docker-compose                           │
@@ -31,14 +31,14 @@
 │                                         └──────────────────────┘ │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                     Volumes (persistentes)               │  │
+│  │                     Persistent volumes                   │  │
 │  │  ./data/sqlite/jetrag.db    ./data/chroma/               │  │
 │  │  ./triton/models/                                        │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-# Fichero docker-compose.yml
+# docker-compose.yml
 
 ```yaml
 # docker-compose.prod.yml
@@ -61,7 +61,7 @@ services:
           memory: 6G
     volumes:
       - ./data:/app/data
-      - ./triton:/app/triton:ro  # Modelos pre-compilados
+      - ./triton:/app/triton:ro  # pre-compiled models
     command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   frontend:

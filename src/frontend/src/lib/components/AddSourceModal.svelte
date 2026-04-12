@@ -1,203 +1,158 @@
-<script lang="ts">
+<script>
+	import { onMount } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { api, type Source } from '$lib/api/client';
-
-	export let chestId: string;
-
-	const dispatch = createEventDispatcher<{
-		close: void;
-		added: Source[];
-	}>();
-
-	interface PendingSource {
-		name: string;
-		type: 'TXT' | 'URL' | 'FILE';
-		content: string;
-	}
-
-	let pendingSources: PendingSource[] = [];
-	let isProcessing = false;
-	let error = '';
-
-	function addPendingSource() {
-		pendingSources = [
-			...pendingSources,
-			{ name: `Fuente ${pendingSources.length + 1}`, type: 'TXT', content: '' },
-		];
-	}
-
-	function removePendingSource(index: number) {
-		pendingSources = pendingSources.filter((_, i) => i !== index);
-	}
-
-	function updatePendingSource(index: number, field: keyof PendingSource, value: string) {
-		pendingSources = pendingSources.map((s, i) =>
-			i === index ? { ...s, [field]: value } : s
-		);
-	}
-
-	async function handleSubmit() {
-		if (pendingSources.length === 0) return;
-
-		const validSources = pendingSources.filter((s) => s.content.trim());
-		if (validSources.length === 0) {
-			error = 'Añade al menos una fuente con contenido';
+	
+	const dispatch = createEventDispatcher();
+	
+	export let open = false;
+	
+	let name = '';
+	let type = 'TXT';
+	let content = '';
+	let loading = false;
+	
+	function handleSubmit() {
+		if (!name.trim()) {
+			alert('Please enter a source name');
 			return;
 		}
-
-		isProcessing = true;
-		error = '';
-
-		try {
-			const created = await api.createSources(
-				chestId,
-				validSources.map((s) => ({
-					name: s.name,
-					type: s.type,
-					content: s.content,
-				}))
-			);
-			dispatch('added', created);
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Error al procesar fuentes';
-		} finally {
-			isProcessing = false;
+		
+		// Validate content based on type
+		if (type === 'TXT' && !content.trim()) {
+			alert('Please enter content for text source');
+			return;
 		}
+		
+		if (type === 'URL' && !content.trim()) {
+			alert('Please enter a URL');
+			return;
+		}
+		
+		if (type === 'FILE') {
+			alert('File upload functionality to be implemented');
+			return;
+		}
+		
+		loading = true;
+		
+		// TODO: Implement actual API call
+		setTimeout(() => {
+			// Mock successful submission
+			dispatch('sourceAdded', {
+				id: Date.now(),
+				name: name,
+				type: type,
+				content: content,
+				is_enabled: true
+			});
+			
+			// Close modal and reset
+			open = false;
+			loading = false;
+			name = '';
+			type = 'TXT';
+			content = '';
+		}, 1000);
 	}
-
-	function handleClose() {
+	
+	function handleCancel() {
+		open = false;
+		// Reset form
+		name = '';
+		type = 'TXT';
+		content = '';
 		dispatch('close');
 	}
-
-	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			handleClose();
-		}
+	
+	function handleTypeChange() {
+		// Reset content when type changes
+		content = '';
 	}
 </script>
 
-<div
-	class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-	on:click={handleBackdropClick}
-	on:keydown={(e) => e.key === 'Escape' && handleClose()}
-	role="dialog"
-	tabindex="-1"
->
-	<div class="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-		<div class="flex items-center justify-between p-4 border-b border-slate-700">
-			<h2 class="text-lg font-medium text-slate-100">Añadir fuentes</h2>
-			<button
-				class="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-slate-200"
-				on:click={handleClose}
-			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-				</svg>
-			</button>
-		</div>
-
-		<div class="flex-1 overflow-y-auto p-4 space-y-4">
-			{#if error}
-				<div class="bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200">
-					{error}
+{#if open}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+		<div class="bg-white rounded-lg p-6 w-full max-w-md">
+			<h2 class="text-xl font-bold mb-4">Add New Source</h2>
+			
+			<form on:submit|preventDefault={handleSubmit}>
+				<div class="mb-4">
+					<label class="block text-sm font-medium mb-2">Source Name</label>
+					<input 
+						type="text" 
+						bind:value={name}
+						class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+						required
+					/>
 				</div>
-			{/if}
-
-			{#each pendingSources as source, index (index)}
-				<div class="bg-slate-900 rounded-lg p-4 space-y-3">
-					<div class="flex items-center justify-between">
-						<input
-							type="text"
-							value={source.name}
-							on:input={(e) => updatePendingSource(index, 'name', e.currentTarget.value)}
-							placeholder="Nombre de la fuente"
-							class="input text-sm flex-1 mr-2"
-						/>
-						<button
-							class="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-red-400"
-							on:click={() => removePendingSource(index)}
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-							</svg>
-						</button>
-					</div>
-
-					<div class="flex gap-2">
-						<button
-							class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors {source.type === 'TXT' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
-							on:click={() => updatePendingSource(index, 'type', 'TXT')}
-						>
-							Texto
-						</button>
-						<button
-							class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors {source.type === 'URL' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
-							on:click={() => updatePendingSource(index, 'type', 'URL')}
-						>
-							URL
-						</button>
-						<button
-							class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors {source.type === 'FILE' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
-							on:click={() => updatePendingSource(index, 'type', 'FILE')}
-						>
-							Archivo
-						</button>
-					</div>
-
-					{#if source.type === 'TXT'}
-						<textarea
-							value={source.content}
-							on:input={(e) => updatePendingSource(index, 'content', e.currentTarget.value)}
-							placeholder="Pega el texto aquí..."
-							rows="4"
-							class="input resize-none text-sm"
+				
+				<div class="mb-4">
+					<label class="block text-sm font-medium mb-2">Source Type</label>
+					<select 
+						bind:value={type}
+						on:change={handleTypeChange}
+						class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+					>
+						<option value="TXT">Plain Text</option>
+						<option value="URL">URL</option>
+						<option value="FILE">File</option>
+					</select>
+				</div>
+				
+				{#if type === 'TXT'}
+					<div class="mb-4">
+						<label class="block text-sm font-medium mb-2">Content</label>
+						<textarea 
+							bind:value={content}
+							class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 h-32"
+							placeholder="Enter text content..."
+							required
 						></textarea>
-					{:else if source.type === 'URL'}
-						<input
+					</div>
+				{:else if type === 'URL'}
+					<div class="mb-4">
+						<label class="block text-sm font-medium mb-2">URL</label>
+						<input 
 							type="url"
-							value={source.content}
-							on:input={(e) => updatePendingSource(index, 'content', e.currentTarget.value)}
-							placeholder="https://ejemplo.com/pagina"
-							class="input text-sm"
+							bind:value={content}
+							class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+							placeholder="Enter URL (e.g., https://example.com)"
+							required
 						/>
-					{:else}
-						<input
+					</div>
+				{:else if type === 'FILE'}
+					<div class="mb-4">
+						<label class="block text-sm font-medium mb-2">File</label>
+						<input 
 							type="file"
-							class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600"
+							class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
 						/>
-					{/if}
-				</div>
-			{/each}
-
-			<button
-				class="w-full py-3 border-2 border-dashed border-slate-600 rounded-lg text-slate-400 hover:border-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-2"
-				on:click={addPendingSource}
-			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-				</svg>
-				Añadir otra fuente
-			</button>
-		</div>
-
-		<div class="p-4 border-t border-slate-700 flex justify-end gap-3">
-			<button class="btn btn-secondary" on:click={handleClose}>
-				Cancelar
-			</button>
-			<button
-				class="btn btn-primary"
-				on:click={handleSubmit}
-				disabled={isProcessing || pendingSources.length === 0}
-			>
-				{#if isProcessing}
-					<span class="flex items-center gap-2">
-						<span class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-						Procesando...
-					</span>
-				{:else}
-					Añadir {pendingSources.length} fuente{pendingSources.length !== 1 ? 's' : ''}
+						<p class="text-xs text-gray-500 mt-1">File upload functionality to be implemented</p>
+					</div>
 				{/if}
-			</button>
+				
+				<div class="flex justify-end space-x-3">
+					<button 
+						type="button"
+						on:click={handleCancel}
+						class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50"
+						disabled={loading}
+					>
+						Cancel
+					</button>
+					<button 
+						type="submit"
+						class="px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded disabled:opacity-50"
+						disabled={loading}
+					>
+						{#if loading}
+							Adding...
+						{:else}
+							Add Source
+						{/if}
+					</button>
+				</div>
+			</form>
 		</div>
 	</div>
-</div>
+{/if}
