@@ -1,1 +1,6 @@
-- Use TypeScript on .svelte files
+- Use TypeScript on .svelte files.
+- The code to update source list when new source is added is not implemented.
+- (This need to be checked on tests) when chest is deleted, sources attached to them don't do so
+- When adding/deleting sources, frontend changes should refresh without F5
+- (NOT IMPLEMENTED) when adding a source, split text on chunks, generate embeddings and store on vectorDB
+- (NOT IMPLEMENTED) when sending an user query, process RAG PIPELINE on backend.

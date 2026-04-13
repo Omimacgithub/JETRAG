@@ -6,7 +6,10 @@
 	import { chatMessages } from '../../../lib/stores/chat';
 	
 	export let params;
+	//let { params }: PageProps = $props();
+	//let { chest } = $props();
 	let chestId = null;
+	let chestIdProp = null;
 	let chest = null;
 	let loading = true;
 	let error = null;
@@ -19,6 +22,7 @@
 			loading = false;
 			return;
 		}
+		chestIdProp = chestId;
 		
 		try {
 			const chestData = await chestAPI.getById(chestId);
@@ -64,9 +68,10 @@
 		{:else}
 			<div class="flex-1 overflow-y-auto">
 				<SourcePanel 
-					{chestId} 
-					onSourceAdded={handleSourceAdded}
+					{chestIdProp} 
+					
 				/>
+				<!--onSourceAdded={handleSourceAdded}-->
 			</div>
 		{/if}
 	</div>
@@ -86,9 +91,9 @@
 			</div>
 			
 			<div class="flex-1 overflow-hidden">
-				<ChatArea 
-					chestId={chestId}
-				/>
+				<ChatArea/>
+					<!--chestId={chestId}-->
+				<!--/>-->
 			</div>
 		</div>
 	</div>

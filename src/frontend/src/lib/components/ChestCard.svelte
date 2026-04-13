@@ -53,6 +53,10 @@
 					e.stopPropagation();
 					handleRename();
 				}}
+				on:keypress={(e) => {
+					e.stopPropagation();
+					handleRename();
+				}}
 				class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded disabled:opacity-50"
 				disabled={renameLoading}
 			>
@@ -64,6 +68,10 @@
 			</button>
 			<button 
 				on:click={(e) => {
+					e.stopPropagation();
+					handleDelete();
+				}}
+				on:keypress={(e) => {
 					e.stopPropagation();
 					handleDelete();
 				}}

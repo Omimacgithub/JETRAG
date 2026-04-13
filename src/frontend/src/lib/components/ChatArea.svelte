@@ -41,7 +41,7 @@
 			chatMessages.update(messages => [...messages, botMessage]);
 			isSubmitting = false;
 			isLoading = false;
-		}, 1500);
+		}, 0);
 	}
 	
 	function handleKeyPress(event) {

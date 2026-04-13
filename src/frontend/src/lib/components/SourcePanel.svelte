@@ -134,7 +134,7 @@
 		<div class="bg-white p-4 rounded mb-4 shadow">
 			<h3 class="font-semibold mb-2">Add New Source</h3>
 			<div class="mb-2">
-				<label class="block text-sm font-medium mb-1">Source Name</label>
+				<label class="block text-sm font-medium mb-1" for={sourceName}>Source Name</label>
 				<input 
 					type="text" 
 					bind:value={sourceName}
@@ -143,7 +143,7 @@
 				/>
 			</div>
 			<div class="mb-2">
-				<label class="block text-sm font-medium mb-1">Source Type</label>
+				<label class="block text-sm font-medium mb-1" for={sourceType}>Source Type</label>
 				<select 
 					bind:value={sourceType}
 					on:change={handleSourceTypeChange}
@@ -156,7 +156,7 @@
 			</div>
 			{#if sourceType === 'TXT'}
 				<div class="mb-2">
-					<label class="block text-sm font-medium mb-1">Content</label>
+					<label class="block text-sm font-medium mb-1" for={sourceContent}>Content</label>
 					<textarea 
 						bind:value={sourceContent}
 						class="w-full p-2 border rounded h-24"
@@ -165,7 +165,7 @@
 				</div>
 			{:else if sourceType === 'URL'}
 				<div class="mb-2">
-					<label class="block text-sm font-medium mb-1">URL</label>
+					<label class="block text-sm font-medium mb-1" for={sourceContent}>URL</label>
 					<input 
 						type="url"
 						bind:value={sourceContent}

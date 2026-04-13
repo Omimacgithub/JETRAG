@@ -99,6 +99,7 @@
 				<div 
 					class="p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
 					on:click={() => handleViewChest(chest.id)}
+					on:keypress={() => handleViewChest(chest.id)}
 				>
 					<div class="flex justify-between items-start">
 						<div>
@@ -110,6 +111,10 @@
 						<div class="flex space-x-2 text-sm">
 							<button 
 								on:click={(e) => {
+									e.stopPropagation();
+									handleRenameChest(chest.id, chest.name);
+								}}
+								on:keypress={(e) => {
 									e.stopPropagation();
 									handleRenameChest(chest.id, chest.name);
 								}}

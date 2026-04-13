@@ -27,7 +27,7 @@
 				await sourceAPI.delete(source.id);
 				// Dispatch event to parent to refresh the list
 				const event = new CustomEvent('sourceDeleted', { detail: source.id });
-				dispatch(event);
+				dispatchEvent(event);
 			} catch (error) {
 				console.error('Failed to delete source:', error);
 				alert('Failed to delete source. Please try again.');
@@ -42,7 +42,7 @@
 			});
 			// Dispatch event to parent to update the source in the list
 			const event = new CustomEvent('sourceToggled', { detail: updatedSource });
-			dispatch(event);
+			dispatchEvent(event);
 		} catch (error) {
 			console.error('Failed to toggle source enabled status:', error);
 			alert('Failed to update source status. Please try again.');

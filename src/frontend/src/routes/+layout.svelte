@@ -14,10 +14,10 @@
 					<div class="hidden md:block">
 						<div class="ml-10 flex items-baseline space-x-4">
 							<!-- Navigation links would go here -->
-							<a href="#" class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-indigo-300">
+							<a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-indigo-300">
 								Home
 							</a>
-							<a href="#" class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-indigo-300">
+							<a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-indigo-300">
 								About
 							</a>
 						</div>
