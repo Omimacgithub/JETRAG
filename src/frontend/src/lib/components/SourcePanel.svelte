@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import SourceWidget from './SourceWidget.svelte';
 	import { sources } from '../stores/sources';
-	import { sourceAPI } from '../lib/api/client';
+	import { sourceAPI } from '../../lib/api/client';
 	
 	let chestId = null;
 	let sourcesList = [];

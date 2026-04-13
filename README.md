@@ -41,26 +41,32 @@ venv\Scripts\activate
 
 3. Install backend dependencies:
 ```bash
+cd src/backend
 pip install -r requirements.txt
 ```
 
 5. Start the backend server:
 ```bash
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend (SvelteKit)
 
 1. Install frontend dependencies:
 ```bash
-cd frontend
+cd src/frontend
 # Generate package-lock.json
 npm install
 # Clean install
 npm ci
 ```
 
-2. Start the development server:
+2. Build the application:
+```bash
+npm run build
+```
+
+3. Start the development server:
 ```bash
 npm run dev
 ```

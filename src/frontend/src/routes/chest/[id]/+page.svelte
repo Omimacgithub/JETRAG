@@ -1,9 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chestAPI, sourceAPI } from '../../lib/api/client';
-	import SourcePanel from '../../lib/components/SourcePanel.svelte';
-	import ChatArea from '../../lib/components/ChatArea.svelte';
-	import { chatMessages } from '../../lib/stores/chat';
+	import { chestAPI, sourceAPI } from '../../../lib/api/client';
+	import SourcePanel from '../../../lib/components/SourcePanel.svelte';
+	import ChatArea from '../../../lib/components/ChatArea.svelte';
+	import { chatMessages } from '../../../lib/stores/chat';
 	
 	export let params;
 	let chestId = null;
@@ -44,7 +44,7 @@
 </script>
 
 <div class="flex h-screen bg-gray-50">
-	{/* Sidebar - Chest Info and Sources */}
+	<!-- Sidebar - Chest Info and Sources -->
 	<div class="w-64 bg-white border-r border-gray-200 flex flex-col">
 		<div class="p-4 border-b">
 			<h1 class="text-xl font-bold">{chest?.name || 'Loading chest...'}</h1>
@@ -71,7 +71,7 @@
 		{/if}
 	</div>
 	
-	{/* Main Content - Chat Interface */}
+	<!-- Main Content - Chat Interface -->
 	<div class="flex-1 flex flex-col">
 		<div class="border-t border-gray-200">
 			<div class="p-4 bg-white border-b">

@@ -1,5 +1,5 @@
 <script>
-	import { sourceAPI } from '../lib/api/client';
+	import { sourceAPI } from '../../lib/api/client';
 	
 	export let source;
 	

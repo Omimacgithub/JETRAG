@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { chests } from '../stores/chests';
 	import { goto } from '$app/navigation';
-	import { chestAPI } from '../lib/api/client';
+	import { chestAPI } from '../../lib/api/client';
 	
 	let searchTerm = '';
 	let loading = false;

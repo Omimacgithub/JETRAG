@@ -46,6 +46,7 @@ To not commit the same mistakes from previous builds, I share to you the followi
 - Check that sveltekit and vite config support TypeScript code compilation.
 - When defining a new API entry point on FastAPI, inputs and outputs should correspond to primitive types and/or Pydantic models.
 - DON'T USE NumPy version 2.
+- Ensure vite.config.ts uses Svelte or Sveltekit
 
 ## README.md
 Create a README.md file with the following:
