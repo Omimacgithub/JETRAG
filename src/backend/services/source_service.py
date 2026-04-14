@@ -8,6 +8,10 @@ from core.vector_store import get_or_create_collection, add_embeddings, delete_f
 from core.ml.embeddings import triton_embedding_client
 import logging
 
+import os
+chunk_size = int(os.getenv('CHUNK_SIZE'))
+chunk_overlap = int(os.getenv('CHUNK_OVERLAP'))
+
 logger = logging.getLogger(__name__)
 
 def get_source(db: Session, source_id: int):
@@ -116,7 +120,8 @@ def process_source(source: Source, db: Session):
         logger.error(f"Error processing source {source.id}: {e}")
         raise
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+def chunk_text(text: str, chunk_size: int = chunk_size, overlap: int = chunk_overlap) -> List[str]:
+    print("I got this, there is " + str(chunk_size) + " of chunk_size and " + str(overlap) + " of overlap")
     """Simple text chunking by sentences with overlap"""
     # Split by sentences (simple regex)
     sentences = re.split(r'[.!?]+', text)

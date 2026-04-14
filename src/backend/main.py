@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 from core.database import engine, Base
 from api.routes import chests, sources, chat
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -17,7 +20,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="JETRAG API",
-    description="RAG Chatbot API for JETRAG application",
+    description="API for managing chests, sources and chat",
     version="0.1.0",
     lifespan=lifespan
 )
