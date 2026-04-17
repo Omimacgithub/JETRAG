@@ -11,21 +11,28 @@ chroma_client = chromadb.PersistentClient(
     )
 )
 
-def get_or_create_collection(collection_name: str = "jetrag_sources"):
+def get_or_create_collection(embedding_function, collection_name: str = "jetrag_sources"):
     """Get or create a ChromaDB collection"""
     try:
-        collection = chroma_client.get_collection(name=collection_name)
+        collection = chroma_client.get_collection(name=collection_name, embedding_function=embedding_function)
     except:
-        collection = chroma_client.create_collection(name=collection_name)
+        collection = chroma_client.create_collection(name=collection_name, embedding_function=embedding_function)
     return collection
 
-def add_embeddings(collection, embeddings, documents, metadatas, ids):
-    """Add embeddings to ChromaDB collection"""
+def add_to_collection(collection, documents, metadatas, ids):
+    """Add source to ChromaDB collection"""
+    # collection: source set for a chest
+    # Embeddings: tensors with relevant features extracted from documents
+    # Documents: plain text divided into chunks
+    # Metadata: store source id and index of each chunk
+
     collection.add(
-        embeddings=embeddings,
+        # ChromaDB compute its own embeddings
+        #embeddings=embeddings,
         documents=documents,
         metadatas=metadatas,
-        ids=ids
+        ids=ids,
+        
     )
 
 def query_collection(collection, query_embeddings, n_results=5, where=None):

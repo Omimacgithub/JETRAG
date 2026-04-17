@@ -4,13 +4,21 @@ from typing import List
 from sqlalchemy.orm import Session
 from models.source import Source
 from models.schemas import SourceCreate, SourceUpdate
-from core.vector_store import get_or_create_collection, add_embeddings, delete_from_collection
-from core.ml.embeddings import triton_embedding_client
+from core.vector_store import get_or_create_collection, add_to_collection, delete_from_collection
+#from core.ml.embeddings import triton_embedding_client
 import logging
+#Embedding generation using CUDA acceleration
+from sentence_transformers import SentenceTransformer
+from config import settings
 
-import os
-chunk_size = int(os.getenv('CHUNK_SIZE'))
-chunk_overlap = int(os.getenv('CHUNK_OVERLAP'))
+model = SentenceTransformer(model_name_or_path='sentence-transformers/all-MiniLM-L6-v2', device='cuda')
+
+chunk_size = int(settings.CHUNK_SIZE)
+chunk_overlap = int(settings.CHUNK_OVERLAP)
+llama_splitter = bool(settings.LLAMA_SPLITTER)
+
+if llama_splitter:
+    from llama_index.core.node_parser import SentenceSplitter
 
 logger = logging.getLogger(__name__)
 
@@ -102,19 +110,27 @@ def process_source(source: Source, db: Session):
             return
             
         # 3.3 Compute chunk embeddings
-        embeddings = triton_embedding_client.embed(chunks)
+        #embeddings = triton_embedding_client.embed(chunks)
+        #embeddings = model.encode(chunks)
         
         # 3.4 Store embeddings on ChromaDB along with plain chunks
-        collection = get_or_create_collection(f"chest_{source.chest_id}")
+        # Retrieve source set for a chest or create a new one if it wasn't before
+        collection = get_or_create_collection(collection_name=f"chest_{source.chest_id}", embedding_function=model)
         
         # Prepare data for ChromaDB
         documents = chunks
         metadatas = [{"source_id": source.id, "chunk_index": i} for i in range(len(chunks))]
         ids = [f"source_{source.id}_chunk_{i}" for i in range(len(chunks))]
         
-        add_embeddings(collection, embeddings, documents, metadatas, ids)
+        add_to_collection(collection, documents, metadatas, ids)
         
         logger.info(f"Processed source {source.id}: {len(chunks)} chunks stored")
+        results = collection.query(
+            query_texts=["This is a query about carabirubi, carabirubao, yo no se"], # Chroma will embed this for you
+            n_results=1 # how many results to return
+        )
+
+        logger.info(results)
         
     except Exception as e:
         logger.error(f"Error processing source {source.id}: {e}")
@@ -124,28 +140,33 @@ def chunk_text(text: str, chunk_size: int = chunk_size, overlap: int = chunk_ove
     print("I got this, there is " + str(chunk_size) + " of chunk_size and " + str(overlap) + " of overlap")
     """Simple text chunking by sentences with overlap"""
     # Split by sentences (simple regex)
-    sentences = re.split(r'[.!?]+', text)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    if not llama_splitter:
+        sentences = re.split(r'[.!?]+', text)
     
-    if not sentences:
-        return []
+        sentences = [s.strip() for s in sentences if s.strip()]
         
-    chunks = []
-    current_chunk = ""
-    
-    for sentence in sentences:
-        # If adding this sentence would exceed chunk size, store current chunk and start new one
-        if len(current_chunk) + len(sentence) + 1 > chunk_size and current_chunk:
+        if not sentences:
+            return []
+            
+        chunks = []
+        current_chunk = ""
+        
+        for sentence in sentences:
+            # If adding this sentence would exceed chunk size, store current chunk and start new one
+            if len(current_chunk) + len(sentence) + 1 > chunk_size and current_chunk:
+                chunks.append(current_chunk.strip())
+                # Start new chunk with overlap from previous chunk
+                words = current_chunk.split()
+                #overlap_words = words[-overlap//10:] if len(words) > overlap//10 else words
+                current_chunk = ""# ".join(overlap_words) + " " + sentence
+            else:
+                current_chunk += (" " if current_chunk else "") + sentence
+        
+        # Add the last chunk
+        if current_chunk.strip():
             chunks.append(current_chunk.strip())
-            # Start new chunk with overlap from previous chunk
-            words = current_chunk.split()
-            overlap_words = words[-overlap//10:] if len(words) > overlap//10 else words
-            current_chunk = " ".join(overlap_words) + " " + sentence
-        else:
-            current_chunk += (" " if current_chunk else "") + sentence
-    
-    # Add the last chunk
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-        
+    else:
+        splitter = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, separator='.')
+        chunks = splitter.split_text(text)
+
     return chunks if chunks else [text]  # Return original text if chunking failed

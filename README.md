@@ -10,7 +10,7 @@ JETRAG is a web application that allows users to interact with a Retrieval-Augme
 - [x] Backend (APIs for managing chests, sources and chat)
 - [x] Frontend-backend integration
 - [x] Data persistence with SQLite
-- [ ] Source processing (parse content, divide into chunks, compute embeddings, store on ChromaDB)
+- [ ] Source processing (extract text from URL/file, divide into chunks, compute embeddings, store on ChromaDB)
 - [ ] Integrate LLM into chat
 - [ ] Add processed sources to user query for LLM reasoning
 

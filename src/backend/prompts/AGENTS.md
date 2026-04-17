@@ -5,9 +5,9 @@ IMPORTANT: if you find that any aspect commented in this file is not aligned wit
 ## Project context
 JETRAG is a web app that let users interact with a RAG chatbot which use chests (concept invented by me to call source information sets like plain text, URLs or files). The deployment and execution of the chatbot is done completely locally, which provides security, specially when critical documents are involved.
 
-JETRAG should allow its deployment on 8 GB RAM NVIDIA Jetson devices (ARM64 with NVIDIA GPU), hence the design and implementation should be as simple and efficient as posible. All the code should run inside Docker containers, the backend container (which runs LLM inferences and embedding model for RAG) should have direct access to NVIDIA Jetson GPU.
+JETRAG should allow its deployment on 8 GB RAM NVIDIA Jetson devices (ARM64 with NVIDIA GPU), hence the design and implementation should be as simple and efficient as posible. All the code should run inside Docker containers, the backend container (which runs LLM inferences) should have direct access to NVIDIA Jetson GPU.
 
-JETRAG web app should use REST APIs for interaction with the chatbot and to manage information sources for every chest. Information sources are splitted in chunks, then chunk embeddings are computed and stored on a VectorDB (ChromaDB). Chest and information sources data are stored in SQLite models.
+JETRAG web app should use REST APIs for interaction with the chatbot and to manage information sources for every chest. Information sources are splitted in chunks, then chunk embeddings are computed and stored on a VectorDB (ChromaDB performs the last two steps). Chest and information sources data are stored in SQLite models.
 
 I want you to implement the following:
 
@@ -19,7 +19,7 @@ File ../design/prototypes/CHAT.png shows a CHAT PAGE concept (its just a concept
 App should run inside Docker containers, DOCKERARCH.md file on current dir shows app container division, how containers are connected and the following persistent volumes used:
 - ./data/sqlite/jetrag.db: SQLite db (for models following the schema specified on SQLSCHEMA.md file on current dir).
 - ./data/chroma/: ChromaDB vector db.
-- ./triton/models/: TensorRT optimized LLM and embeddings models.
+- ./triton/models/: TensorRT optimized LLM.
 When you create docker-compose.yml file, you can follow the configuration on section "docker-compose.yml" from DOCKERARCH.md file on current dir.
 
 
