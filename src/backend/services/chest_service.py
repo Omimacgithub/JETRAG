@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.chest import Chest
-from models.schemas import ChestCreate, ChestUpdate
+from src.backend.models.chest import Chest
+from src.backend.models.schemas import ChestCreate, ChestUpdate
 from typing import List, Optional
 
 def get_chest(db: Session, chest_id: int):

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 250
     #Text overlapping between chunks
     CHUNK_OVERLAP: int = 0
+    #Number of best matching chunks returned from user query  
+    TOP_K: int = 5
     
     # API
     API_V1_STR: str = "/api"

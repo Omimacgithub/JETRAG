@@ -10,9 +10,11 @@ JETRAG is a web application that allows users to interact with a Retrieval-Augme
 - [x] Backend (APIs for managing chests, sources and chat)
 - [x] Frontend-backend integration
 - [x] Data persistence with SQLite
-- [ ] Source processing (extract text from URL/file, divide into chunks, compute embeddings, store on ChromaDB)
+- [ ] Source processing from plain text
 - [ ] Integrate LLM into chat
 - [ ] Add processed sources to user query for LLM reasoning
+- [ ] Source processing from URL
+- [ ] Source processing from file
 
 ## Software Requirements
 
@@ -64,7 +66,8 @@ cp .env.template .env
 
 5. Start the backend server:
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd $PROJECT_HOME
+uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### Frontend (SvelteKit)

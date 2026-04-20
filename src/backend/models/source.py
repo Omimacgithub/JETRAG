@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.sql import func
-from core.database import Base
+from src.backend.core.database import Base
 
 class Source(Base):
     __tablename__ = "sources"

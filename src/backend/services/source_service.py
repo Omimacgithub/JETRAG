@@ -2,16 +2,27 @@ import hashlib
 import re
 from typing import List
 from sqlalchemy.orm import Session
-from models.source import Source
-from models.schemas import SourceCreate, SourceUpdate
-from core.vector_store import get_or_create_collection, add_to_collection, delete_from_collection
+from src.backend.models.source import Source
+from src.backend.models.schemas import SourceCreate, SourceUpdate
+from src.backend.core.vector_store import get_or_create_collection, add_to_collection, delete_from_collection
 #from core.ml.embeddings import triton_embedding_client
 import logging
 #Embedding generation using CUDA acceleration
-from sentence_transformers import SentenceTransformer
-from config import settings
+from src.backend.config import settings
+from chromadb.utils import embedding_functions
 
-model = SentenceTransformer(model_name_or_path='sentence-transformers/all-MiniLM-L6-v2', device='cuda')
+embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name='all-MiniLM-L6-v2', device='cuda')
+
+'''
+class SentenceTransformerEmbeddingFunction:
+    def __init__(self, model, name: str = "sentence-transformer"):
+        self.model = model
+        self.name = name
+
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        embeddings = self.model.encode(input)
+        return embeddings.tolist()
+'''
 
 chunk_size = int(settings.CHUNK_SIZE)
 chunk_overlap = int(settings.CHUNK_OVERLAP)
@@ -78,7 +89,7 @@ def delete_source(db: Session, source_id: int):
     if db_source:
         # Remove embeddings from ChromaDB
         try:
-            collection = get_or_create_collection(f"chest_{db_source.chest_id}")
+            collection = get_or_create_collection(embedding_function, collection_name=f"chest_{db_source.chest_id}")
             # Delete using source ID as part of the document ID
             delete_from_collection(collection, [f"source_{source_id}"])
         except Exception as e:
@@ -115,7 +126,8 @@ def process_source(source: Source, db: Session):
         
         # 3.4 Store embeddings on ChromaDB along with plain chunks
         # Retrieve source set for a chest or create a new one if it wasn't before
-        collection = get_or_create_collection(collection_name=f"chest_{source.chest_id}", embedding_function=model)
+        #embedding_function = SentenceTransformerEmbeddingFunction(model)
+        collection = get_or_create_collection(collection_name=f"chest_{source.chest_id}", embedding_function=embedding_function)
         
         # Prepare data for ChromaDB
         documents = chunks
@@ -125,19 +137,19 @@ def process_source(source: Source, db: Session):
         add_to_collection(collection, documents, metadatas, ids)
         
         logger.info(f"Processed source {source.id}: {len(chunks)} chunks stored")
+        texto = "This is a query about carabirubi, carabiruba, yo no se"
         results = collection.query(
-            query_texts=["This is a query about carabirubi, carabirubao, yo no se"], # Chroma will embed this for you
+            query_texts=[texto], # Chroma will embed this for you
             n_results=1 # how many results to return
         )
 
-        logger.info(results)
+        #print("THA BEST RESULT TO: " + str(results) + " ; " + texto)
         
     except Exception as e:
         logger.error(f"Error processing source {source.id}: {e}")
         raise
 
 def chunk_text(text: str, chunk_size: int = chunk_size, overlap: int = chunk_overlap) -> List[str]:
-    print("I got this, there is " + str(chunk_size) + " of chunk_size and " + str(overlap) + " of overlap")
     """Simple text chunking by sentences with overlap"""
     # Split by sentences (simple regex)
     if not llama_splitter:

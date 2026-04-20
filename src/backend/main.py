@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from core.database import engine, Base
-from api.routes import chests, sources, chat
+from src.backend.core.database import engine, Base
+from src.backend.api.routes import chests, sources, chat
 
 from dotenv import load_dotenv
 load_dotenv()

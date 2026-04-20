@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from core.database import get_db
-from models.schemas import Chest, ChestCreate, ChestUpdate
-from services import chest_service
+from src.backend.core.database import get_db
+from src.backend.models.schemas import Chest, ChestCreate, ChestUpdate
+from src.backend.services import chest_service
 
 router = APIRouter()
 

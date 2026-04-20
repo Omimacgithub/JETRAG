@@ -1,10 +1,11 @@
 import logging
+import src.backend.config as cfg
 from typing import List, Tuple
 from sqlalchemy.orm import Session
-from models.source import Source
-from core.vector_store import get_or_create_collection, query_collection
-from core.ml.embeddings import triton_embedding_client
-from core.ml.llm import triton_llm_client
+from src.backend.models.source import Source
+from src.backend.core.vector_store import get_or_create_collection, query_collection
+#from src.backend.core.ml.embeddings import triton_embedding_client
+#from src.backend.core.ml.llm import triton_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -12,12 +13,12 @@ def retrieve_relevant_chunks(
     db: Session, 
     chest_id: int, 
     question: str, 
-    top_k: int = 5
+    top_k: int = cfg.TOP_K
 ) -> List[Tuple[str, dict]]:
     """Retrieve relevant chunks for a question from a chest's sources"""
     try:
-        # Get embedding for the question
-        question_embedding = triton_embedding_client.embed([question])[0]
+        # Get embedding for the question (ChromaDB already computes the embedding)
+        #question_embedding = triton_embedding_client.embed([question])[0]
         
         # Get the collection for this chest
         collection = get_or_create_collection(f"chest_{chest_id}")
@@ -25,7 +26,9 @@ def retrieve_relevant_chunks(
         # Query the collection
         results = query_collection(
             collection, 
-            [question_embedding],  # Query expects list of embeddings
+            False,
+            [question],
+            # [question_embedding],  # If you want to provide embeddings
             n_results=top_k
         )
         
@@ -93,6 +96,7 @@ Question: {question}
 Answer:"""
     
     # Generate answer using Triton LLM
+    #LLM INFERENCE CODE HERE!!
     # This would be an async call in practice
     # For now, we'll return a placeholder
     return f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
