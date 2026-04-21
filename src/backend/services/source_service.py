@@ -11,7 +11,7 @@ import logging
 from src.backend.config import settings
 from chromadb.utils import embedding_functions
 
-embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name='all-MiniLM-L6-v2', device='cuda')
+embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(device='cuda')#model_name=settings.EMBEDDINGS_MODEL_PATH, )
 
 '''
 class SentenceTransformerEmbeddingFunction:

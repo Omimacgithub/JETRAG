@@ -18,11 +18,11 @@ def _create_chat_message(db: Session, chat_message: ChatMessageCreate) -> DBChat
     db.refresh(db_chat_message)
     return db_chat_message
 
-@router.post("/", response_model=ChatMessage)
-def create_chat_message(chat_message: ChatMessageCreate, db: Session = Depends(get_db)):
-    return _create_chat_message(db, chat_message)
+#@router.post("/", response_model=ChatMessage)
+#def create_chat_message(chat_message: ChatMessageCreate, db: Session = Depends(get_db)):
+#    return _create_chat_message(db, chat_message)
 
-@router.post("/query", response_model=RAGResponse)
+@router.post("/", response_model=RAGResponse)
 def process_chat_query(rag_query: RAGQuery, db: Session = Depends(get_db)):
     # Store user message
     user_message = ChatMessageCreate(
@@ -39,8 +39,8 @@ def process_chat_query(rag_query: RAGQuery, db: Session = Depends(get_db)):
     # Store assistant message
     assistant_message = ChatMessageCreate(
         role="ASSISTANT",
-        content=result.answer,
-        sources_used=result.sources_used,
+        content=result['answer'],
+        sources_used=result['sources_used'],
         chest_id=rag_query.chest_id
     )
     _create_chat_message(db, assistant_message)

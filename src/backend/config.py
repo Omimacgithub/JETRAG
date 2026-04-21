@@ -7,10 +7,13 @@ class Settings(BaseSettings):
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     
-    # Triton
+    # Triton (We don't use Triton on Jetson Orin Nano)
     TRITON_SERVER_URL: str = "http://triton:8001"
     TRITON_LLM_MODEL_NAME: str = "phi3"
     TRITON_EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
+
+    # Embeddings model path
+    EMBEDDINGS_MODEL_PATH: str = "/home/omi/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/"
 
     #Trigger llama_index SentenceSplitter, otherwise a simple regexp splitter is used
     LLAMA_SPLITTER: bool = True

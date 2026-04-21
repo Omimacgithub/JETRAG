@@ -120,7 +120,7 @@ export const sourceAPI = {
 // Chat/RAG API functions
 export const chatAPI = {
 	query: async (query: RAGQuery): Promise<RAGResponse> => {
-		const response = await fetch(`${API_BASE_URL}/api/chat/query`, {
+		const response = await fetch(`${API_BASE_URL}/api/chat/`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

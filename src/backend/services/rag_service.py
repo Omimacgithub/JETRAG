@@ -37,7 +37,7 @@ def retrieve_relevant_chunks(
         metadatas = results["metadatas"]#results.get("metadatas", [[]])[0] if results.get("metadatas") else []
         
         # Combine documents with their metadata
-        relevant_chunks = zip(documents, metadatas)
+        relevant_chunks = list(zip(documents, metadatas))
         
         return relevant_chunks
         
@@ -49,7 +49,7 @@ def filter_sources_by_enabled(db: Session, chest_id: int, chunk_metadata_list: L
     """Filter chunks to only include those from enabled sources"""
     if not chunk_metadata_list:
         return []
-    print("CHUNK METADATA RESULTS: ", str(chunk_metadata_list))
+    #print("CHUNK METADATA RESULTS: ", str(chunk_metadata_list))
         
     # Get unique source IDs from metadata
     # REVISIT BELOW CODE LINE FOR DEBUGGING
@@ -68,16 +68,16 @@ def filter_sources_by_enabled(db: Session, chest_id: int, chunk_metadata_list: L
     enabled_source_ids = [source.id for source in enabled_sources]
     
     # Filter chunks to only include those from enabled sources
-    filtered_chunks = []
-    for i, meta in enumerate(chunk_metadata_list):
-        if meta.get("source_id") in enabled_source_ids:
+    #filtered_chunks = []
+    #for i, meta in enumerate(chunk_metadata_list):
+    #   if meta.get("source_id") in enabled_source_ids:
             # We would need to store the actual chunk text somewhere to return it
             # For now, we'll return indices or need to adjust our approach
-            pass
+    #      pass
     
     # Since we don't have the chunk texts here, we'll need to modify our approach
     # Let's return the metadata for now and adjust the calling function
-    return [meta for meta in chunk_metadata_list if meta["source_id"] in enabled_source_ids]
+    return enabled_source_ids #[meta for meta in chunk_metadata_list if meta["source_id"] in enabled_source_ids]
 
 def generate_rag_answer(question: str, context_chunks: List[str]) -> str:
     """Generate answer using LLM with retrieved context"""
@@ -119,14 +119,15 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
         
         # Separate chunks and metadata
         #print("RELEVANT CHUNKSSS: ", relevant_chunks)
-        chunk_texts = relevant_chunks[0]
-        chunk_metadata = relevant_chunks[1]
+        chunk_texts = relevant_chunks[0][0]
+        chunk_metadata = relevant_chunks[0][1]
+        #print("TEXTS CHUNKSSS: ", chunk_texts)
         #print("METADATA CHUNKSSS: ", chunk_metadata)
         
         # 4.4 Filter by enabled sources
-        filtered_metadata = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
         
-        if not filtered_metadata:
+        if not enabled_ids:
             return {
                 "answer": "I found some information, but it's from disabled sources. Please enable some sources to get an answer.",
                 "sources_used": []
@@ -134,24 +135,31 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
         
         # Get the actual chunk texts for filtered metadata
         # We need to match metadata to get the correct chunk texts
+        # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
+        filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x['source_id'] in enabled_ids]
+        chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
+        '''
         filtered_chunks = []
-        for meta in filtered_metadata:
+        for meta in enabled_ids:
             # Find the corresponding chunk text
             for i, (chunk_text, chunk_meta) in enumerate(relevant_chunks):
                 if chunk_meta == meta:
                     filtered_chunks.append(chunk_text)
                     break
-        
+        '''
+
         # 4.5 Use plain chunks with user query for LLM answer
-        answer = generate_rag_answer(question, filtered_chunks)
+        answer = generate_rag_answer(question, chunk_texts)
+        answer = {
+            "answer": answer,
+            "sources_used": enabled_ids
+        }
+        print("RESPUU: ", answer)
         
         # Extract source IDs used
         #source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
         
-        return {
-            "answer": answer,
-            "sources_used": filtered_metadata
-        }
+        return answer
         
     except Exception as e:
         logger.error(f"Error processing RAG query: {e}")
