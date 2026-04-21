@@ -8,12 +8,11 @@ chroma_client = chromadb.PersistentClient(
     settings=Settings(
         anonymized_telemetry=False,
         allow_reset=True,
-        # This solves CORS problem?
         chroma_server_cors_allow_origins=["*"]
     )
 )
 
-def get_or_create_collection(embedding_function, collection_name: str = "jetrag_sources"):
+def get_or_create_collection(embedding_function=None, collection_name: str = "jetrag_sources"):
     """Get or create a ChromaDB collection"""
     try:
         collection = chroma_client.get_collection(name=collection_name)

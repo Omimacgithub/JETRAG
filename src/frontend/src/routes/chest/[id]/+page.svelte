@@ -91,9 +91,7 @@
 			</div>
 			
 			<div class="flex-1 overflow-hidden">
-				<ChatArea/>
-					<!--chestId={chestId}-->
-				<!--/>-->
+				<ChatArea {chestId}/>
 			</div>
 		</div>
 	</div>

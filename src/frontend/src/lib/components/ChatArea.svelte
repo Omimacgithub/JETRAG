@@ -1,10 +1,12 @@
 <script>
 	import MessageBubble from './MessageBubble.svelte';
 	import { chatMessages } from '../stores/chat';
+	import { chatAPI } from '../api/client';
 	
 	let messageInput = '';
 	let isSubmitting = false;
 	let isLoading = false;
+	export let chestId;
 	
 	async function handleSubmit() {
 		if (!messageInput.trim() || isSubmitting) return;
@@ -27,21 +29,42 @@
 		const input = messageInput;
 		messageInput = '';
 		
-		// TODO: Send message to backend and get response
-		// For now, simulate a response
-		setTimeout(() => {
+		try {
+			// Send message to backend and get response
+			const ragQuery = {
+				question: input,
+				chest_id: chestId
+			};
+			
+			const response = await chatAPI.query(ragQuery);
+			
+			// Add assistant message to chat
 			const botMessage = {
 				id: Date.now() + 1, // Temporary ID
 				role: 'ASSISTANT',
-				content: `This is a simulated response to: "${input}". In a real implementation, this would come from the RAG pipeline.`,
+				content: response.answer,
 				timestamp: new Date(),
-				sourcesUsed: [1, 2] // Example source IDs
+				sourcesUsed: response.sources_used
 			};
 			
 			chatMessages.update(messages => [...messages, botMessage]);
+		} catch (error) {
+			console.error('Error processing query:', error);
+			
+			// Add error message to chat
+			const errorMessage = {
+				id: Date.now() + 1, // Temporary ID
+				role: 'ASSISTANT',
+				content: `Sorry, I encountered an error: ${error.message}`,
+				timestamp: new Date(),
+				sourcesUsed: []
+			};
+			
+			chatMessages.update(messages => [...messages, errorMessage]);
+		} finally {
 			isSubmitting = false;
 			isLoading = false;
-		}, 0);
+		}
 	}
 	
 	function handleKeyPress(event) {

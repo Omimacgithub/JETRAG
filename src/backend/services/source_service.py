@@ -89,7 +89,7 @@ def delete_source(db: Session, source_id: int):
     if db_source:
         # Remove embeddings from ChromaDB
         try:
-            collection = get_or_create_collection(embedding_function, collection_name=f"chest_{db_source.chest_id}")
+            collection = get_or_create_collection(embedding_function=embedding_function, collection_name=f"chest_{db_source.chest_id}")
             # Delete using source ID as part of the document ID
             delete_from_collection(collection, [f"source_{source_id}"])
         except Exception as e:

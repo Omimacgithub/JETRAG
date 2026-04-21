@@ -1,0 +1,23 @@
+-------------------------------------------------------------------
+------- IMPLEMENTATION OF CHAT MESSAGE SENDING FROM FRONTEND ------
+-------------------------------------------------------------------
+
+Summary of Changes Made:
+
+1. Modified src/frontend/src/lib/components/ChatArea.svelte:
+   - Replaced simulated response logic with actual API call to backend
+   - Added import for chatAPI from '../api/client'
+   - Added exported chestId prop to receive chest ID from parent component
+   - In handleSubmit function:
+     * Created RAGQuery object with question and chest_id fields
+     * Made POST request to /api/chat/query via chatAPI.query()
+     * Processed RAGResponse to extract answer and sources_used
+     * Added proper error handling with try/catch/finally blocks
+     * Updated chat store with real bot message or error message
+   - Removed the setTimeout simulation (lines 32-44 in original)
+
+2. Modified src/frontend/src/routes/chest/[id]/+page.svelte:
+   - Updated ChatArea component usage to pass chestId prop
+   - Changed <ChatArea/> to <ChatArea {chestId}/>
+
+These changes enable the frontend to communicate with the backend's RAG query endpoint (@src/backend/api/routes/chat.py#L25-48) by sending a properly formatted RAGQuery object (@src/backend/models/schemas.py#L66-68) and handling the RAGResponse to display actual AI-generated responses with source citations.

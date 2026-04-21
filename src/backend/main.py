@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+#from fastapi_cors import CORS #Don't believe this is a valid solution in production
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -24,6 +25,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan
 )
+ 
+#CORS(app)
 
 # CORS middleware
 app.add_middleware(

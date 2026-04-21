@@ -1,5 +1,5 @@
 import logging
-import src.backend.config as cfg
+from src.backend.config import settings
 from typing import List, Tuple
 from sqlalchemy.orm import Session
 from src.backend.models.source import Source
@@ -13,7 +13,7 @@ def retrieve_relevant_chunks(
     db: Session, 
     chest_id: int, 
     question: str, 
-    top_k: int = cfg.TOP_K
+    top_k: int = settings.TOP_K
 ) -> List[Tuple[str, dict]]:
     """Retrieve relevant chunks for a question from a chest's sources"""
     try:
@@ -21,7 +21,7 @@ def retrieve_relevant_chunks(
         #question_embedding = triton_embedding_client.embed([question])[0]
         
         # Get the collection for this chest
-        collection = get_or_create_collection(f"chest_{chest_id}")
+        collection = get_or_create_collection(collection_name=f"chest_{chest_id}")
         
         # Query the collection
         results = query_collection(
@@ -33,11 +33,11 @@ def retrieve_relevant_chunks(
         )
         
         # Extract documents and metadata
-        documents = results.get("documents", [[]])[0] if results.get("documents") else []
-        metadatas = results.get("metadatas", [[]])[0] if results.get("metadatas") else []
+        documents = results["documents"]#results.get("documents", [[]])[0] if results.get("documents") else []
+        metadatas = results["metadatas"]#results.get("metadatas", [[]])[0] if results.get("metadatas") else []
         
         # Combine documents with their metadata
-        relevant_chunks = list(zip(documents, metadatas))
+        relevant_chunks = zip(documents, metadatas)
         
         return relevant_chunks
         
@@ -49,9 +49,11 @@ def filter_sources_by_enabled(db: Session, chest_id: int, chunk_metadata_list: L
     """Filter chunks to only include those from enabled sources"""
     if not chunk_metadata_list:
         return []
+    print("CHUNK METADATA RESULTS: ", str(chunk_metadata_list))
         
     # Get unique source IDs from metadata
-    source_ids = list(set(meta.get("source_id") for meta in chunk_metadata_list if meta.get("source_id")))
+    # REVISIT BELOW CODE LINE FOR DEBUGGING
+    source_ids = list(set(meta["source_id"] for meta in chunk_metadata_list))
     
     if not source_ids:
         return []
@@ -75,7 +77,7 @@ def filter_sources_by_enabled(db: Session, chest_id: int, chunk_metadata_list: L
     
     # Since we don't have the chunk texts here, we'll need to modify our approach
     # Let's return the metadata for now and adjust the calling function
-    return [meta for meta in chunk_metadata_list if meta.get("source_id") in enabled_source_ids]
+    return [meta for meta in chunk_metadata_list if meta["source_id"] in enabled_source_ids]
 
 def generate_rag_answer(question: str, context_chunks: List[str]) -> str:
     """Generate answer using LLM with retrieved context"""
@@ -96,7 +98,7 @@ Question: {question}
 Answer:"""
     
     # Generate answer using Triton LLM
-    #LLM INFERENCE CODE HERE!!
+    # LLM INFERENCE CODE HERE!!
     # This would be an async call in practice
     # For now, we'll return a placeholder
     return f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
@@ -116,8 +118,10 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
             }
         
         # Separate chunks and metadata
-        chunk_texts = [chunk[0] for chunk in relevant_chunks]
-        chunk_metadata = [chunk[1] for chunk in relevant_chunks]
+        #print("RELEVANT CHUNKSSS: ", relevant_chunks)
+        chunk_texts = relevant_chunks[0]
+        chunk_metadata = relevant_chunks[1]
+        #print("METADATA CHUNKSSS: ", chunk_metadata)
         
         # 4.4 Filter by enabled sources
         filtered_metadata = filter_sources_by_enabled(db, chest_id, chunk_metadata)
@@ -142,11 +146,11 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
         answer = generate_rag_answer(question, filtered_chunks)
         
         # Extract source IDs used
-        source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
+        #source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
         
         return {
             "answer": answer,
-            "sources_used": source_ids_used
+            "sources_used": filtered_metadata
         }
         
     except Exception as e:
