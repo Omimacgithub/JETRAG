@@ -6,4 +6,3 @@ llama-index
 httpx
 pydantic
 pydantic-settings
-tritonclient[all]

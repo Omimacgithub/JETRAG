@@ -1,19 +1,19 @@
 from pydantic_settings import BaseSettings
+import os
 
 class Settings(BaseSettings):
+    
+    #Path of models downloaded from huggingface hub
+    HF_MODELS_PATH: str = os.getenv("HOME") + ".cache/huggingface/hub/"
+
     # Database
     DATABASE_URL: str = "sqlite:///jetrag.db"
     
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
-    
-    # Triton (We don't use Triton on Jetson Orin Nano)
-    TRITON_SERVER_URL: str = "http://triton:8001"
-    TRITON_LLM_MODEL_NAME: str = "phi3"
-    TRITON_EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
 
     # Embeddings model path
-    EMBEDDINGS_MODEL_PATH: str = "/home/omi/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/"
+    EMBEDDINGS_MODEL_PATH: str = HF_MODELS_PATH + "models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/"
 
     #Trigger llama_index SentenceSplitter, otherwise a simple regexp splitter is used
     LLAMA_SPLITTER: bool = True
@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 0
     #Number of best matching chunks returned from user query  
     TOP_K: int = 5
+
+    #GGUF model for inference on llama.cpp
+    GGUF_MODEL: str = HF_MODELS_PATH + "models--unsloth--gemma-4-E2B-it-GGUF/snapshots/f064409f340b34190993560b2168133e5dbae558/gemma-4-E2B-it-Q4_K_S.gguf"
     
     # API
     API_V1_STR: str = "/api"

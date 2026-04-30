@@ -1,0 +1,21 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+context: |
+  Project: JETRAG is a web app that let users interact with a RAG assistant which use chests (concept invented by me to call source information sets like plain text, URLs or files). The deployment and execution of the assistant is done completely locally, which provides security, specially when critical documents are involved.
+  Tech stack: JavaScript, SvelteKit, Vite, FastAPI, SQLAlchemy, ChromaDB
+  We use conventional commits
+  We use standard conventions.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+  tasks:
+    - Break tasks into chunks of max 2 hours

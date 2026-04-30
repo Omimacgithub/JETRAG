@@ -1,4 +1,11 @@
-# App container division
+# Docker app architecture
+App should run inside Docker containers, this .md file shows app container division, how containers are connected and the following persistent volumes used:
+- ./data/sqlite/jetrag.db: SQLite db (for models following the schema specified on SQLSCHEMA.md file on current dir).
+- ./data/chroma/: ChromaDB vector db.
+- ./triton/models/: TensorRT optimized LLM.
+When you create docker-compose.yml file, you can follow the configuration on section "docker-compose.yml" of this file.
+
+## App container division
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        docker-compose                           │
@@ -38,7 +45,7 @@
 └────────────────────────────────────────────────────────────────┘
 ```
 
-# docker-compose.yml
+## docker-compose.yml
 
 ```yaml
 # docker-compose.prod.yml

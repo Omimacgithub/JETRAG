@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from src.backend.models.source import Source
 from src.backend.models.schemas import SourceCreate, SourceUpdate
 from src.backend.core.vector_store import get_or_create_collection, add_to_collection, delete_from_collection
-#from core.ml.embeddings import triton_embedding_client
 import logging
 #Embedding generation using CUDA acceleration
 from src.backend.config import settings
@@ -121,7 +120,6 @@ def process_source(source: Source, db: Session):
             return
             
         # 3.3 Compute chunk embeddings
-        #embeddings = triton_embedding_client.embed(chunks)
         #embeddings = model.encode(chunks)
         
         # 3.4 Store embeddings on ChromaDB along with plain chunks

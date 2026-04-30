@@ -4,10 +4,13 @@ from typing import List, Tuple
 from sqlalchemy.orm import Session
 from src.backend.models.source import Source
 from src.backend.core.vector_store import get_or_create_collection, query_collection
-#from src.backend.core.ml.embeddings import triton_embedding_client
-#from src.backend.core.ml.llm import triton_llm_client
-
+from llama_cpp import Llama
 logger = logging.getLogger(__name__)
+
+from src.backend.config import settings
+
+print("Building Llama class and loading " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
+llm = Llama(model_path=settings.GGUF_MODEL)
 
 def retrieve_relevant_chunks(
     db: Session, 
@@ -18,7 +21,6 @@ def retrieve_relevant_chunks(
     """Retrieve relevant chunks for a question from a chest's sources"""
     try:
         # Get embedding for the question (ChromaDB already computes the embedding)
-        #question_embedding = triton_embedding_client.embed([question])[0]
         
         # Get the collection for this chest
         collection = get_or_create_collection(collection_name=f"chest_{chest_id}")
@@ -94,14 +96,20 @@ Answer the question based on your general knowledge. If you don't know the answe
 {context}
 ---------------------
 Given the context information and not prior knowledge, answer the question.
-Question: {question}
-Answer:"""
-    
-    # Generate answer using Triton LLM
-    # LLM INFERENCE CODE HERE!!
+Q: {question}
+A:"""
+        print("USER PROMPT: ", prompt)
+        output = llm(
+            prompt, # Prompt
+            max_tokens=0,#32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
+            #stop=["Q:", "\n"], # Stop generating just before the model would generate a new question
+            #echo=True, # Echo the prompt back in the output,
+            suffix="Sure! ",
+            stream=False
+        ) # Generate a completion, can also call create_completion
     # This would be an async call in practice
     # For now, we'll return a placeholder
-    return f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
+    return output #f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
 
 async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
     """Process a complete RAG query"""
@@ -154,7 +162,7 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
             "answer": answer,
             "sources_used": enabled_ids
         }
-        print("RESPUU: ", answer)
+        #print("RESPUU: ", answer)
         
         # Extract source IDs used
         #source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))

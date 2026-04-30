@@ -225,6 +225,11 @@ Refer to NVIDIA's documentation for converting models to TensorRT-LLM format.
    - On systems with limited memory, consider reducing batch sizes
    - Monitor memory usage during embedding generation
 
+## Inference engines study
+Due to the "poor" RAM memory provided by NVIDIA Jetson Orin Nano (8 GB), I was forced to change the initial proposal for the LLM inference environment (Triton server + TensorRT-LLM). Therefore, I performed a study of several inference backends to find the most suitable for the use case of this project and for the strict memory requirements of Jetson Orin Nano.
+
+
+
 ## License
 
 This project is proprietary software. All rights reserved.
