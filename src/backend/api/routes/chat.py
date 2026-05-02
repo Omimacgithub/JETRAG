@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 import json
@@ -35,23 +36,16 @@ def process_chat_query(rag_query: RAGQuery, db: Session = Depends(get_db)):
     _create_chat_message(db, user_message)
     
     # Process RAG query
-    result = asyncio.run(rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question))
+    response = asyncio.run(rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question))
     
     # Store assistant message
     assistant_message = ChatMessageCreate(
         role="ASSISTANT",
-        content=result['answer'],
-        sources_used=result['sources_used'],
+        content=response['answer'],
+        sources_used=response['sources_used'],
         chest_id=rag_query.chest_id
     )
-    _create_chat_message(db, assistant_message)
-    
-    return result
 
-# Alternative streaming endpoint
-@router.post("/stream")
-async def process_chat_query_stream(rag_query: RAGQuery, db: Session = Depends(get_db)):
-    # For streaming response, we'd use StreamingResponse
-    # For now, we'll return the regular response
-    result = await rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question)
-    return result
+    _create_chat_message(db, assistant_message)
+
+    return response

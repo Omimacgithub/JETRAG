@@ -1,3 +1,4 @@
+--constraint constraints.txt
 fastapi
 uvicorn
 sqlalchemy
@@ -6,3 +7,7 @@ llama-index
 httpx
 pydantic
 pydantic-settings
+scikit-learn
+transformers
+sentence_transformers
+llama_cpp_python

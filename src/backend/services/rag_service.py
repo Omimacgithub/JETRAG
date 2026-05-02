@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 from src.backend.config import settings
 
-print("Building Llama class and loading " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
 llm = Llama(model_path=settings.GGUF_MODEL)
+print("Built Llama class and loading " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
 
 def retrieve_relevant_chunks(
     db: Session, 
@@ -101,14 +101,17 @@ A:"""
         print("USER PROMPT: ", prompt)
         output = llm(
             prompt, # Prompt
-            max_tokens=0,#32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
+            max_tokens=0, #32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
             #stop=["Q:", "\n"], # Stop generating just before the model would generate a new question
             #echo=True, # Echo the prompt back in the output,
             suffix="Sure! ",
-            stream=False
+            stream=False # Returns a generator object
         ) # Generate a completion, can also call create_completion
     # This would be an async call in practice
     # For now, we'll return a placeholder
+    #for item in output:
+    #  yield item['choices'][0]['text']
+      #print(item['choices'][0]['text'], end='')
     return output #f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
 
 async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
@@ -157,9 +160,9 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
         '''
 
         # 4.5 Use plain chunks with user query for LLM answer
-        answer = generate_rag_answer(question, chunk_texts)
+        response = generate_rag_answer(question, chunk_texts)
         answer = {
-            "answer": answer,
+            "answer": response["choices"][0]["text"],
             "sources_used": enabled_ids
         }
         #print("RESPUU: ", answer)

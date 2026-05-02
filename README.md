@@ -56,7 +56,7 @@ venv\Scripts\activate
 3. Install backend dependencies:
 ```bash
 cd src/backend
-pip install -r requirements.txt
+pip install -r requirements.txt -c constraints.txt
 ```
 
 4. Create .env file from template

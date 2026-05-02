@@ -4,7 +4,7 @@ import os
 class Settings(BaseSettings):
     
     #Path of models downloaded from huggingface hub
-    HF_MODELS_PATH: str = os.getenv("HOME") + ".cache/huggingface/hub/"
+    HF_MODELS_PATH: str = os.getenv("HOME") + "/.cache/huggingface/hub/"
 
     # Database
     DATABASE_URL: str = "sqlite:///jetrag.db"
