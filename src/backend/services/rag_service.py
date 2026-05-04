@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 from src.backend.config import settings
 
 llm = Llama(model_path=settings.GGUF_MODEL)
-print("Built Llama class and loading " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
+
+#Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
+print("Built Llama class and loaded " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
 
 def retrieve_relevant_chunks(
     db: Session, 

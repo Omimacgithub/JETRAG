@@ -168,7 +168,7 @@ PROJECT_NAME=JETRAG
 - The backend uses FastAPI with SQLAlchemy ORM for SQLite
 - ML inference is handled via Llama.cpp Inference Server
 - Embedding model: all-MiniLM-L6-v2
-- Language model: Phi-3-mini-4k-instruct
+- Language model: Gemma-4-E2B
 - Vector database: ChromaDB
 
 ### Frontend
