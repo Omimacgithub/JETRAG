@@ -10,9 +10,10 @@ JETRAG is a web application that allows users to interact with a Retrieval-Augme
 - [x] Backend (APIs for managing chests, sources and chat)
 - [x] Frontend-backend integration
 - [x] Data persistence with SQLite
-- [ ] Source processing from plain text
-- [ ] Integrate LLM into chat
-- [ ] Add processed sources to user query for LLM reasoning
+- [x] Source processing from plain text
+- [x] Integrate LLM into chat
+- [x] Add processed sources to user query for LLM reasoning
+- [ ] Streaming LLM responses
 - [ ] Source processing from URL
 - [ ] Source processing from file
 
@@ -23,7 +24,7 @@ JETRAG is a web application that allows users to interact with a Retrieval-Augme
 - **Python**: 3.8 or higher
 - **Git**: For version control
 - **Docker**: For containerized deployment (optional for local development)
-- **NVIDIA GPU**: Required for Triton inference server (CPU fallback available but slower)
+- **NVIDIA GPU**: Required for Llama.cpp inference engine (CPU fallback available but slower)
 
 ### Docker Deployment
 - Docker Engine v20.10+
@@ -59,12 +60,7 @@ cd src/backend
 pip install -r requirements.txt -c constraints.txt
 ```
 
-4. Create .env file from template
-```bash
-cp .env.template .env
-```
-
-5. Start the backend server:
+4. Start the backend server:
 ```bash
 cd $PROJECT_HOME
 uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
@@ -86,12 +82,15 @@ npm ci
 npm run build
 ```
 
-3. Start the development server:
+3. Create .env file from template
+```bash
+cp .env.template .env
+```
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
-
-The frontend will be available at http://localhost:3000
 
 To clean npm project packages:
 ```bash
@@ -111,18 +110,6 @@ npm run clin
    sudo apt-get update
    sudo apt-get install -y nvidia-docker2
    sudo systemctl restart docker
-   ```
-
-2. Pull required Triton models (you'll need to provide your own models):
-   ```bash
-   # Create model directories
-   mkdir -p triton/models/phi3/1
-   mkdir -p triton/models/all-MiniLM-L6-v2/1
-   
-   # Place your TensorRT-LLM Phi-3 model in triton/models/phi3/1/
-   # Place your Triton all-MiniLM-L6-v2 model in triton/models/all-MiniLM-L6-v2/1/
-   
-   # Create model config files (config.pbtxt) in each model directory
    ```
 
 ### Deployment Steps
@@ -148,7 +135,6 @@ When running locally:
 - **Frontend (SvelteKit)**: http://localhost:3000
 - **Backend (FastAPI)**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs (Swagger UI)
-- **Triton Inference Server**: http://localhost:8001 (internal to Docker network)
 
 When running with Docker Compose:
 - **Frontend**: http://localhost:3000
@@ -160,7 +146,6 @@ When running with Docker Compose:
 The application uses Docker volumes for data persistence:
 - `./data/sqlite/jetrag.db`: SQLite database containing chests, sources, and chat messages
 - `./data/chroma/`: ChromaDB vector database for storing embeddings
-- `./triton/models/`: Directory for TensorRT-optimized models (read-only)
 
 ## Configuration
 
@@ -172,11 +157,6 @@ DATABASE_URL=sqlite:///./data/sqlite/jetrag.db
 # ChromaDB
 CHROMA_PERSIST_DIRECTORY=./data/chroma
 
-# Triton
-TRITON_SERVER_URL=http://triton:8001
-TRITON_LLM_MODEL_NAME=phi3
-TRITON_EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
-
 # API
 API_V1_STR=/api
 PROJECT_NAME=JETRAG
@@ -186,7 +166,7 @@ PROJECT_NAME=JETRAG
 
 ### Backend
 - The backend uses FastAPI with SQLAlchemy ORM for SQLite
-- ML inference is handled via NVIDIA Triton Inference Server
+- ML inference is handled via Llama.cpp Inference Server
 - Embedding model: all-MiniLM-L6-v2
 - Language model: Phi-3-mini-4k-instruct
 - Vector database: ChromaDB
@@ -197,38 +177,24 @@ PROJECT_NAME=JETRAG
 - Styling with TailwindCSS (via CDN)
 - Component-based architecture
 
-### Model Requirements
-For full GPU acceleration, you need to provide:
-1. TensorRT-LLM optimized Phi-3-mini-4k-instruct model
-2. Triton server compatible all-MiniLM-L6-v2 embedding model
-
-Refer to NVIDIA's documentation for converting models to TensorRT-LLM format.
-
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Triton Connection Errors**:
-   - Ensure Triton server is running and accessible
-   - Check that model repository is correctly configured
-   - Verify GPU visibility in container (`nvidia-smi` inside container)
-
-2. **Database Connection Issues**:
+1. **Database Connection Issues**:
    - Verify SQLite file permissions in `./data/sqlite/`
    - Check that the directory exists and is writable
 
-3. **Frontend Proxy Issues**:
+2. **Frontend Proxy Issues**:
    - Ensure frontend is configured to proxy API requests to backend
    - Check CORS settings in backend if developing locally without proxy
 
-4. **Memory Constraints**:
+3. **Memory Constraints**:
    - On systems with limited memory, consider reducing batch sizes
    - Monitor memory usage during embedding generation
 
 ## Inference engines study
 Due to the "poor" RAM memory provided by NVIDIA Jetson Orin Nano (8 GB), I was forced to change the initial proposal for the LLM inference environment (Triton server + TensorRT-LLM). Therefore, I performed a study of several inference backends to find the most suitable for the use case of this project and for the strict memory requirements of Jetson Orin Nano.
-
-
 
 ## License
 
