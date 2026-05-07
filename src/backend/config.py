@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     #Number of best matching chunks returned from user query  
     TOP_K: int = 5
 
+    #Flag to not load LLM model (for frontend debugging).
+    MOCK_MODE : bool = True
+
     #GGUF model for inference on llama.cpp
     GGUF_MODEL: str = HF_MODELS_PATH + "models--unsloth--gemma-4-E2B-it-GGUF/snapshots/f064409f340b34190993560b2168133e5dbae558/gemma-4-E2B-it-Q4_K_S.gguf"
     

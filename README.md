@@ -13,6 +13,7 @@ JETRAG is a web application that allows users to interact with a Retrieval-Augme
 - [x] Source processing from plain text
 - [x] Integrate LLM into chat
 - [x] Add processed sources to user query for LLM reasoning
+- [x] Persitent conversations during a web session (use of localStorage)
 - [ ] Streaming LLM responses
 - [ ] Source processing from URL
 - [ ] Source processing from file

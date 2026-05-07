@@ -119,6 +119,7 @@ export const sourceAPI = {
 
 // Chat/RAG API functions
 export const chatAPI = {
+	//Batch mode
 	query: async (query: RAGQuery): Promise<RAGResponse> => {
 		const response = await fetch(`${API_BASE_URL}/api/chat/`, {
 			method: 'POST',
@@ -131,5 +132,68 @@ export const chatAPI = {
 			throw new Error(`Failed to process query: ${response.status}`);
 		}
 		return response.json();
+	},
+	//Streaming mode
+	streamQuery: async (
+		query: RAGQuery,
+		onChunk: (chunk: string) => void,
+		onDone: () => void
+	): Promise<void> => {
+		const response = await fetch(`${API_BASE_URL}/api/chat/`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ ...query, stream: true }),
+		});
+		
+		if (!response.ok) {
+			throw new Error(`Failed to process query: ${response.status}`);
+		}
+		
+		if (!response.body) {
+			throw new Error('No response body available');
+		}
+		//window.alert(response.body)
+
+		//EventSource performs GET request, which is not ideal
+        /*
+		const evtSource = new EventSource(`${API_BASE_URL}/api/chat/`);
+
+		evtSource.onmessage = (e) => {
+			
+		}
+		*/
+		
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		
+		while (true) {
+			const { done, value } = await reader.read();
+			
+			if (done) break;
+			
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n\n');
+			buffer = lines.pop() || '';
+			
+			for (const line of lines) {
+				if (line.startsWith('data: ')) {
+					const data = line.slice(6);
+					
+					if (data === '[DONE]') {
+						onDone();
+						return;
+					}
+					
+					if (data) {
+						onChunk(data);
+					}
+				}
+			}
+		}
+		
+		onDone();
 	}
 };

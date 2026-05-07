@@ -1,6 +1,6 @@
 import logging
 from src.backend.config import settings
-from typing import List, Tuple
+from typing import List, Tuple, AsyncGenerator
 from sqlalchemy.orm import Session
 from src.backend.models.source import Source
 from src.backend.core.vector_store import get_or_create_collection, query_collection
@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 from src.backend.config import settings
 
-llm = Llama(model_path=settings.GGUF_MODEL)
+if not settings.MOCK_MODE:
+  llm = Llama(model_path=settings.GGUF_MODEL, n_ctx=0)
 
 #Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
 print("Built Llama class and loaded " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
@@ -101,14 +102,17 @@ Given the context information and not prior knowledge, answer the question.
 Q: {question}
 A:"""
         print("USER PROMPT: ", prompt)
-        output = llm(
+        if not settings.MOCK_MODE:
+          output = llm(
             prompt, # Prompt
             max_tokens=0, #32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
             #stop=["Q:", "\n"], # Stop generating just before the model would generate a new question
             #echo=True, # Echo the prompt back in the output,
             suffix="Sure! ",
             stream=False # Returns a generator object
-        ) # Generate a completion, can also call create_completion
+          ) # Generate a completion, can also call create_completion
+        else:
+          output = "Hey! This is a prebuilt response"
     # This would be an async call in practice
     # For now, we'll return a placeholder
     #for item in output:
@@ -180,3 +184,108 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
             "answer": "Sorry, I encountered an error while processing your question.",
             "sources_used": []
         }
+
+
+async def stream_rag_response(
+    db: Session,
+    chest_id: int,
+    question: str
+) -> AsyncGenerator[str, None]:
+    """Stream RAG response as SSE events"""
+    chunks_collected = []
+    
+    try:
+        relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=5)
+        
+        if not relevant_chunks:
+            error_chunk = "I couldn't find any relevant information to answer your question."
+            yield format_sse_event(error_chunk)
+            chunks_collected.append(error_chunk)
+            return
+        
+        chunk_texts = relevant_chunks[0][0]
+        chunk_metadata = relevant_chunks[0][1]
+        
+        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+        
+        if not enabled_ids:
+            error_chunk = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
+            yield format_sse_event(error_chunk)
+            chunks_collected.append(error_chunk)
+            return
+        
+        filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x['source_id'] in enabled_ids]
+        chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
+        
+        context = "\n\n".join(chunk_texts)
+        prompt = f"""Context information is below.
+---------------------
+{context}
+---------------------
+Given the context information and not prior knowledge, answer the question.
+Q: {question}
+A:"""
+        full_response = ""
+        if not settings.MOCK_MODE:
+          output = llm(
+            prompt,
+            max_tokens=None,
+            suffix="Sure! ",
+            stream=True
+          )
+          for item in output:
+            text = item['choices'][0]['text']
+            if text:
+              full_response += text
+              chunks_collected.append(text)
+              yield format_sse_event(text)
+        else:
+          yield format_sse_event("Hey! This is a prebuilt response")
+        
+        if full_response:
+            await store_full_response(db, chest_id, full_response, enabled_ids)
+        
+    except Exception as e:
+        logger.error(f"Error in streaming RAG response: {e}")
+        error_chunk = "Sorry, I encountered an error while processing your question."
+        yield format_sse_event(error_chunk)
+        chunks_collected.append(error_chunk)
+    
+    yield format_sse_done()
+
+
+def format_sse_event(data: str) -> str:
+    """Format data as SSE event"""
+    return f"data: {data}\n\n"
+
+
+def format_sse_done() -> str:
+    """Format SSE done event"""
+    return "data: [DONE]\n\n"
+
+
+async def store_full_response(
+    db: Session,
+    chest_id: int,
+    content: str,
+    sources_used: List[int]
+) -> None:
+    """Store full assistant response in database"""
+    try:
+        from src.backend.models.chat_message import ChatMessage as DBChatMessage
+        from src.backend.models.schemas import ChatMessageCreate
+        
+        assistant_message = ChatMessageCreate(
+            role="ASSISTANT",
+            content=content,
+            sources_used=sources_used,
+            chest_id=chest_id
+        )
+        
+        db_chat_message = DBChatMessage(**assistant_message.dict())
+        db.add(db_chat_message)
+        db.commit()
+        db.refresh(db_chat_message)
+        logger.info(f"Stored streamed response for chest {chest_id}")
+    except Exception as e:
+        logger.error(f"Error storing streamed response: {e}")

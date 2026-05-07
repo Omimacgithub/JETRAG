@@ -1,69 +1,185 @@
-<script>
+<script lang='ts'>
 	import MessageBubble from './MessageBubble.svelte';
-	import { chatMessages } from '../stores/chat';
+	//import { chatMessages } from '../stores/chat';
+	import { writable } from 'svelte/store';
 	import { chatAPI } from '../api/client';
+	import { browser } from '$app/environment';
 	
+	//The bottom console log enables MessageBubble to be loaded, otherwise ReferenceError :P 
+	console.log(MessageBubble);
+
 	let messageInput = '';
 	let isSubmitting = false;
 	let isLoading = false;
-	export let chestId;
+	let streamingContent = '';
+	let isStreaming = false;
+	let currentStreamingId : number = 0;
+	export let chestId : number;
+	//let messageId = 0;
+
+	function getAllItems() {
+		try {
+			var values = [], 
+			//Because localStorage keys don't follow any order, we sort the keys in order to print chat messages accordingly
+			keys = Object.keys(localStorage).sort(), 
+			top = keys.length, 
+			i=0;
+
+			if (top<1) {
+				return [];
+			}
+	
+			while ( i < top ) {
+				const item = JSON.parse(localStorage.getItem(keys[i]));
+				values.push( item );
+				i++;
+				//values[0].content;
+			}
+
+			return values;
+
+		} catch (e) {
+			console.error('Error while retrieving items:', e);
+		}
+	}
+
+	function storeMessage(message) {
+		//console.log("MESSAGE TO STORE (should be JSON object): ", message)
+		try {
+			//Example localStorage.setItem(14, JSON.stringify({id: 0, chest_id: 2, role: 'USER', content: 'Hey', created_at: '14'}))
+			localStorage.setItem(message.id, JSON.stringify(message));
+		} catch (e) {
+			console.error('Error storing message:', e);
+		}
+	}
+
+	let values = [];
+	
+	//Ensure the bottom code is executed on browser context (not server)
+	if (browser){
+		values = getAllItems();
+	}
+	
+	let chatMessages = writable<Array<{
+		id: number;
+		chest_id: number;
+		role: 'USER' | 'ASSISTANT';
+		content: string;
+		sources_used: number[] | null;
+		timestamp: string;
+		is_streaming: boolean;
+	}>>(values);
+	
+	chatMessages.subscribe((value) => {
+		//console.log(value)
+		if (browser && value.length > 0) {
+			let lastOnTheList = value[value.length-1]
+			//console.log(JSON.stringify(lastOnTheList))
+			storeMessage(lastOnTheList);	
+		}
+	});
 	
 	async function handleSubmit() {
 		if (!messageInput.trim() || isSubmitting) return;
 		
 		isSubmitting = true;
 		isLoading = true;
+		isStreaming = true;
+		streamingContent = '';
 		
-		// Add user message to chat
 		const userMessage = {
-			id: Date.now(), // Temporary ID
+			id: Date.now(),
 			role: 'USER',
 			content: messageInput,
 			timestamp: new Date()
 		};
 		
-		// Update chat store (in a real app, we'd also persist to backend)
-		chatMessages.update(messages => [...messages, userMessage]);
 		
-		// Clear input
+		chatMessages.update((messages) => [...messages, userMessage]);
+		/*for (const msg of $chatMessages){
+			console.log(JSON.stringify(msg))
+		}*/
+		
 		const input = messageInput;
 		messageInput = '';
 		
+		currentStreamingId = Date.now() + 1;
+		
+		const assistantMessage = {
+			id: currentStreamingId,
+			role: 'ASSISTANT',
+			content: '',
+			timestamp: new Date(),
+			sources_used: [],
+			is_streaming: true
+		};
+		
+		chatMessages.update((messages) => [...messages, assistantMessage]);
+		
+		
 		try {
-			// Send message to backend and get response
 			const ragQuery = {
 				question: input,
 				chest_id: chestId
 			};
 			
-			const response = await chatAPI.query(ragQuery);
-			
-			// Add assistant message to chat
-			const botMessage = {
-				id: Date.now() + 1, // Temporary ID
-				role: 'ASSISTANT',
-				content: response.answer,
-				timestamp: new Date(),
-				sourcesUsed: response.sources_used
-			};
-			
-			chatMessages.update(messages => [...messages, botMessage]);
+			await chatAPI.streamQuery(
+				ragQuery,
+				(chunk) => {
+					streamingContent += chunk;
+		/*			chatMessages.update(messages => {
+messages[messages.length-1].content = streamingContent;
+//console.log("LENGTH: "  + messages.length);
+					});
+*/
+					
+					chatMessages.update(messages => 
+						messages.map(m => 
+							m.id === currentStreamingId 
+								? { ...m, content: streamingContent }
+								: m
+						)
+					);
+					//console.log("Streaming content: " + streamingContent);
+					//console.log("Chat messages list: " + $chatMessages);
+				
+				},
+				() => {
+/*					chatMessages.update(messages => {
+						messages[messages.length-1].is_streaming = false;
+						//messages[messages.length-1].sources_used = [];
+					});
+*/
+					
+					chatMessages.update(messages => 
+						messages.map(m => 
+							m.id === currentStreamingId 
+								? { ...m, isStreaming: false, sources_used: [] }
+								: m
+						)
+					);
+					
+					isStreaming = false;
+					isLoading = false;
+					isSubmitting = false;
+				}
+			);
 		} catch (error) {
 			console.error('Error processing query:', error);
 			
-			// Add error message to chat
 			const errorMessage = {
-				id: Date.now() + 1, // Temporary ID
+				id: Date.now() + 2,
 				role: 'ASSISTANT',
 				content: `Sorry, I encountered an error: ${error.message}`,
 				timestamp: new Date(),
-				sourcesUsed: []
+				sources_used: []
 			};
 			
 			chatMessages.update(messages => [...messages, errorMessage]);
-		} finally {
-			isSubmitting = false;
+			
+			isStreaming = false;
 			isLoading = false;
+			isSubmitting = false;
 		}
 	}
 	
@@ -76,7 +192,7 @@
 </script>
 
 <div class="flex flex-col h-[600px] border rounded p-4 overflow-y-auto mb-4">
-	{#if $chatMessages.length === 0}
+	{#if $chatMessages.length === 0 && !isStreaming}
 		<div class="flex flex-col items-center justify-center h-full text-gray-500">
 			<p>Start a conversation by asking a question...</p>
 		</div>
@@ -89,7 +205,9 @@
 		{#if isLoading}
 			<div class="flex items-center justify-center py-2">
 				<span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></span>
-				<span class="ml-2 text-sm">Thinking...</span>
+				<span class="ml-2 text-sm">
+					{isStreaming ? 'Generating response...' : 'Thinking...'}
+				</span>
 			</div>
 		{/if}
 	{/if}

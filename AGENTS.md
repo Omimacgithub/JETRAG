@@ -30,6 +30,7 @@ Write the code on separated blocks by file, TREE.md file on current dir provides
 ## Relevant implementation notes
 To not commit the same mistakes from previous builds, I share to you the following aspects you should consider when building the code:
 - Use JavaScript localStorage when creating lists to persist changes between page updates.
+- When creating Svelte code, always be aware of using API functions that exist on both browser and server. If the previous is not possible, use the flag browser of $app/environment.
 - Before using npm ci command, be sure that package-lock.json file exists.
 - Check that sveltekit and vite config support TypeScript code compilation.
 - When defining a new API entry point on FastAPI, inputs and outputs should correspond to primitive types and/or Pydantic models.

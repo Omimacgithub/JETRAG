@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, AsyncGenerator
 import json
+import asyncio
 from src.backend.core.database import get_db
 from src.backend.models.schemas import ChatMessage, ChatMessageCreate, RAGQuery, RAGResponse
 from src.backend.models.source import Source
 from src.backend.models.chat_message import ChatMessage as DBChatMessage
 from src.backend.services import rag_service
-
-import asyncio
+from src.backend.config import settings
+#from fastapi.background import BackgroundTasks
 
 router = APIRouter()
 
@@ -20,13 +21,33 @@ def _create_chat_message(db: Session, chat_message: ChatMessageCreate) -> DBChat
     db.refresh(db_chat_message)
     return db_chat_message
 
-#@router.post("/", response_model=ChatMessage)
-#def create_chat_message(chat_message: ChatMessageCreate, db: Session = Depends(get_db)):
-#    return _create_chat_message(db, chat_message)
+async def sse_response_generator(
+    db: Session,
+    chest_id: int,
+    question: str,
+    #background_tasks: BackgroundTasks
 
-@router.post("/", response_model=RAGResponse)
-def process_chat_query(rag_query: RAGQuery, db: Session = Depends(get_db)):
-    # Store user message
+) -> AsyncGenerator[str, None]:
+    chunk_text = ""
+    async for chunk in rag_service.stream_rag_response(db, chest_id, question):
+        yield chunk
+        chunk_text += chunk
+    '''
+    assistant_message = ChatMessageCreate(
+        role="ASSISTANT",
+        content=chunk_text,
+        sources_used=response['sources_used'],
+        chest_id=chest_id
+    )
+    background_tasks.add_task(_create_chat_message(db, assistant_message))
+    '''
+
+@router.post("/")
+def process_chat_query(
+    rag_query: RAGQuery,
+    db: Session = Depends(get_db),
+    #background_tasks: BackgroundTasks = None
+):
     user_message = ChatMessageCreate(
         role="USER",
         content=rag_query.question,
@@ -34,11 +55,18 @@ def process_chat_query(rag_query: RAGQuery, db: Session = Depends(get_db)):
         chest_id=rag_query.chest_id
     )
     _create_chat_message(db, user_message)
+
+    print("STREAMING FLAG: ", rag_query.stream)
     
-    # Process RAG query
+    if rag_query.stream:
+        return StreamingResponse(
+            sse_response_generator(db, rag_query.chest_id, rag_query.question),#background_tasks),
+            media_type="text/event-stream"
+        )
+    
+    #Non streaming way
     response = asyncio.run(rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question))
     
-    # Store assistant message
     assistant_message = ChatMessageCreate(
         role="ASSISTANT",
         content=response['answer'],

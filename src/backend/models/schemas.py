@@ -66,6 +66,7 @@ class ChatMessage(ChatMessageBase):
 class RAGQuery(BaseModel):
     question: str
     chest_id: int
+    stream: Optional[bool] = False
 
 class RAGResponse(BaseModel):
     answer: str
