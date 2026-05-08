@@ -1,4 +1,5 @@
 import logging
+import time
 from src.backend.config import settings
 from typing import List, Tuple, AsyncGenerator
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 from src.backend.config import settings
 
 if not settings.MOCK_MODE:
-  llm = Llama(model_path=settings.GGUF_MODEL, n_ctx=0)
+  llm = Llama(model_path=settings.GGUF_MODEL, n_ctx=settings.TEXT_CONTEXT)
 
 #Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
 print("Built Llama class and loaded " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
@@ -83,6 +84,119 @@ def filter_sources_by_enabled(db: Session, chest_id: int, chunk_metadata_list: L
     # Since we don't have the chunk texts here, we'll need to modify our approach
     # Let's return the metadata for now and adjust the calling function
     return enabled_source_ids #[meta for meta in chunk_metadata_list if meta["source_id"] in enabled_source_ids]
+
+
+#You cannot use async keyword when function that streams data for StreamingResponse have blocking functions (example: time.sleep)
+def stream_rag_response(
+    db: Session,
+    chest_id: int,
+    question: str
+) -> AsyncGenerator[str, None]:
+    """Stream RAG response as SSE events"""
+    chunks_collected = []
+    
+    try:
+        relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=5)
+        
+        if not relevant_chunks:
+            error_chunk = "I couldn't find any relevant information to answer your question."
+            yield format_sse_event(error_chunk)
+            chunks_collected.append(error_chunk)
+            return
+        
+        chunk_texts = relevant_chunks[0][0]
+        chunk_metadata = relevant_chunks[0][1]
+        
+        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+        
+        if not enabled_ids:
+            error_chunk = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
+            yield format_sse_event(error_chunk)
+            chunks_collected.append(error_chunk)
+            return
+        
+        filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x['source_id'] in enabled_ids]
+        chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
+        
+        context = "\n\n".join(chunk_texts)
+        prompt = f"""Context information is below.
+---------------------
+{context}
+---------------------
+Given the context information and not prior knowledge, answer the question.
+Q: {question}
+A:"""
+        full_response = ""
+        if not settings.MOCK_MODE:
+          output = llm(
+            prompt,
+            max_tokens=None,
+            suffix="Sure! ",
+            stream=True
+          )
+          print("PREPARING FOR INFERENCE")
+          for item in output:
+            text = item['choices'][0]['text']
+            if text:
+              full_response += text
+              chunks_collected.append(text)
+              print(f"[{time.time()}] YIELDING CHUNK: {text}")
+              yield format_sse_event(text)
+        else:
+          chunk_list = ["Hey! ", "This ", "is ", "a ", "prebuilt ", "response"]
+          for chunk in chunk_list:
+            print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
+            time.sleep(1)
+            yield format_sse_event(chunk)
+        
+        print("Proceeding to message store")
+        store_full_response(db, chest_id, full_response, enabled_ids)
+        
+    except Exception as e:
+        logger.error(f"Error in streaming RAG response: {e}")
+        error_chunk = "Sorry, I encountered an error while processing your question."
+        yield format_sse_event(error_chunk)
+        chunks_collected.append(error_chunk)
+    
+    yield format_sse_done()
+
+
+def format_sse_event(data: str) -> str:
+    """Format data as SSE event"""
+    return f"data: {data}\n\n"
+
+
+def format_sse_done() -> str:
+    """Format SSE done event"""
+    return "data: [DONE]\n\n"
+
+
+def store_full_response(
+    db: Session,
+    chest_id: int,
+    content: str,
+    sources_used: List[int]
+) -> None:
+    """Store full assistant response in database"""
+    try:
+        from src.backend.models.chat_message import ChatMessage as DBChatMessage
+        from src.backend.models.schemas import ChatMessageCreate
+        
+        assistant_message = ChatMessageCreate(
+            role="ASSISTANT",
+            content=content,
+            sources_used=sources_used,
+            chest_id=chest_id
+        )
+        
+        db_chat_message = DBChatMessage(**assistant_message.dict())
+        db.add(db_chat_message)
+        db.commit()
+        db.refresh(db_chat_message)
+        logger.info(f"Stored streamed response for chest {chest_id}")
+    except Exception as e:
+        logger.error(f"Error storing streamed response: {e}")
+
 
 def generate_rag_answer(question: str, context_chunks: List[str]) -> str:
     """Generate answer using LLM with retrieved context"""
@@ -184,108 +298,3 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
             "answer": "Sorry, I encountered an error while processing your question.",
             "sources_used": []
         }
-
-
-async def stream_rag_response(
-    db: Session,
-    chest_id: int,
-    question: str
-) -> AsyncGenerator[str, None]:
-    """Stream RAG response as SSE events"""
-    chunks_collected = []
-    
-    try:
-        relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=5)
-        
-        if not relevant_chunks:
-            error_chunk = "I couldn't find any relevant information to answer your question."
-            yield format_sse_event(error_chunk)
-            chunks_collected.append(error_chunk)
-            return
-        
-        chunk_texts = relevant_chunks[0][0]
-        chunk_metadata = relevant_chunks[0][1]
-        
-        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
-        
-        if not enabled_ids:
-            error_chunk = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
-            yield format_sse_event(error_chunk)
-            chunks_collected.append(error_chunk)
-            return
-        
-        filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x['source_id'] in enabled_ids]
-        chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
-        
-        context = "\n\n".join(chunk_texts)
-        prompt = f"""Context information is below.
----------------------
-{context}
----------------------
-Given the context information and not prior knowledge, answer the question.
-Q: {question}
-A:"""
-        full_response = ""
-        if not settings.MOCK_MODE:
-          output = llm(
-            prompt,
-            max_tokens=None,
-            suffix="Sure! ",
-            stream=True
-          )
-          for item in output:
-            text = item['choices'][0]['text']
-            if text:
-              full_response += text
-              chunks_collected.append(text)
-              yield format_sse_event(text)
-        else:
-          yield format_sse_event("Hey! This is a prebuilt response")
-        
-        if full_response:
-            await store_full_response(db, chest_id, full_response, enabled_ids)
-        
-    except Exception as e:
-        logger.error(f"Error in streaming RAG response: {e}")
-        error_chunk = "Sorry, I encountered an error while processing your question."
-        yield format_sse_event(error_chunk)
-        chunks_collected.append(error_chunk)
-    
-    yield format_sse_done()
-
-
-def format_sse_event(data: str) -> str:
-    """Format data as SSE event"""
-    return f"data: {data}\n\n"
-
-
-def format_sse_done() -> str:
-    """Format SSE done event"""
-    return "data: [DONE]\n\n"
-
-
-async def store_full_response(
-    db: Session,
-    chest_id: int,
-    content: str,
-    sources_used: List[int]
-) -> None:
-    """Store full assistant response in database"""
-    try:
-        from src.backend.models.chat_message import ChatMessage as DBChatMessage
-        from src.backend.models.schemas import ChatMessageCreate
-        
-        assistant_message = ChatMessageCreate(
-            role="ASSISTANT",
-            content=content,
-            sources_used=sources_used,
-            chest_id=chest_id
-        )
-        
-        db_chat_message = DBChatMessage(**assistant_message.dict())
-        db.add(db_chat_message)
-        db.commit()
-        db.refresh(db_chat_message)
-        logger.info(f"Stored streamed response for chest {chest_id}")
-    except Exception as e:
-        logger.error(f"Error storing streamed response: {e}")

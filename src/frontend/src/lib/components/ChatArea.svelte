@@ -127,6 +127,7 @@
 				ragQuery,
 				(chunk) => {
 					streamingContent += chunk;
+					//console.log(streamingContent);
 		/*			chatMessages.update(messages => {
 messages[messages.length-1].content = streamingContent;
 //console.log("LENGTH: "  + messages.length);
@@ -154,7 +155,7 @@ messages[messages.length-1].content = streamingContent;
 					chatMessages.update(messages => 
 						messages.map(m => 
 							m.id === currentStreamingId 
-								? { ...m, isStreaming: false, sources_used: [] }
+								? { ...m, is_streaming: false, sources_used: [] }
 								: m
 						)
 					);

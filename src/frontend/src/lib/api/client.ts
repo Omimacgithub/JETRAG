@@ -154,25 +154,25 @@ export const chatAPI = {
 		if (!response.body) {
 			throw new Error('No response body available');
 		}
-		//window.alert(response.body)
 
-		//EventSource performs GET request, which is not ideal
-        /*
-		const evtSource = new EventSource(`${API_BASE_URL}/api/chat/`);
-
-		evtSource.onmessage = (e) => {
-			
-		}
-		*/
-		
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
 		
 		while (true) {
 			const { done, value } = await reader.read();
+			//console.log(decoder.decode(value));//, { stream: true }));
 			
-			if (done) break;
+			if (done) {
+				if (buffer.startsWith('data: ')) {
+					const data = buffer.slice(6);
+					if (data && data !== '[DONE]') {
+						onChunk(data);
+					}
+				}
+				onDone();
+				break;
+			}
 			
 			buffer += decoder.decode(value, { stream: true });
 			const lines = buffer.split('\n\n');
@@ -193,7 +193,6 @@ export const chatAPI = {
 				}
 			}
 		}
-		
-		onDone();
+
 	}
 };
