@@ -143,10 +143,17 @@ A:"""
               print(f"[{time.time()}] YIELDING CHUNK: {text}")
               yield format_sse_event(text)
         else:
-          chunk_list = ["Hey! ", "This ", "is ", "a ", "prebuilt ", "response"]
+          chunk_list = ["Hey! ", "This ", "is ", "a ", "prebuilt ", "response ", 
+                        "¿Ustedes ", "piensan ", "antes ", "de ", "hablar ", "o ", "hablan ", 
+                        "tras ", "pensar? ", "Haré todo ", "lo que ", "pueda y un ", "poco más ", 
+                        "de lo que ", "pueda ", "si es que ", "eso es posible, ", "y haré todo ", 
+                        "lo posible ", "e incluso lo ", "imposible ", "si también ", "lo imposible ", 
+                        "es posible", "Hay que ", "fabricar ", "máquinas ", "que nos ", "permitan seguir ", 
+                        "fabricando ", "máquinas ", "porque lo ", "que no va a ", "hacer nunca la ", "máquina es ", 
+                        "fabricar ", "máquinas"]
           for chunk in chunk_list:
-            print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
-            time.sleep(1)
+            #print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
+            time.sleep(0.1)
             yield format_sse_event(chunk)
         
         print("Proceeding to message store")
