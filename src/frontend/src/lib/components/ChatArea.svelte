@@ -1,9 +1,26 @@
+<style>
+
+.autoscroll {
+  display: flex;
+  flex-direction: column;
+  height: 600px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #d1d5db; /* Tailwind default gray-300 */
+  border-radius: 0.25rem; /* Tailwind rounded = 4px */
+  padding: 1rem; /* p-4 */
+  overflow-y: auto;
+  margin-bottom: 1rem; /* mb-4 */
+}
+
+</style>
 <script lang='ts'>
 	import MessageBubble from './MessageBubble.svelte';
 	//import { chatMessages } from '../stores/chat';
 	import { writable } from 'svelte/store';
 	import { chatAPI } from '../api/client';
 	import { browser } from '$app/environment';
+    import { onMount } from 'svelte';
 	
 	//The bottom console log enables MessageBubble to be loaded, otherwise ReferenceError :P 
 	console.log(MessageBubble);
@@ -190,9 +207,23 @@ messages[messages.length-1].content = streamingContent;
 			handleSubmit();
 		}
 	}
+	
+	//Code to autoscroll down to the last chat messages (https://medium.com/@heatherbooker/how-to-auto-scroll-to-the-bottom-of-a-div-415e967e7a24)
+	onMount(() => {
+		if (browser) {
+			var someElement = document.querySelector(".autoscroll");
+			function scrollToBottom() {
+				someElement.scrollTop = someElement.scrollHeight;
+			}
+			var observer = new MutationObserver(scrollToBottom);
+			var config = { childList: true, subtree: true, characterData: true };
+			observer.observe(someElement, config);
+		}
+	});
+	
 </script>
 
-<div class="flex flex-col h-[600px] border rounded p-4 overflow-y-auto mb-4">
+<div class="autoscroll">
 	{#if $chatMessages.length === 0 && !isStreaming}
 		<div class="flex flex-col items-center justify-center h-full text-gray-500">
 			<p>Start a conversation by asking a question...</p>
