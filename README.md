@@ -1,6 +1,6 @@
-# JETRAG - Your Local RAG Assitant deployed on NVIDIA Jetson devices
+# JETRAG - Your Local RAG Assitant on NVIDIA Jetson devices
 
-JETRAG is a web application that allows users to interact with a Retrieval-Augmented Generation (RAG) assistant using "chests" (collections of source information like plain text, URLs, or files). The application runs completely locally for enhanced security, especially when dealing with sensitive documents.
+JETRAG is a web application that allows users to interact with a Retrieval-Augmented Generation (RAG) assistant using "chests" (collections of source information like plain text, URLs, or files). The application runs completely locally to ensure confidentiality and low latency responses.
 
 <img width="1080" height="765" alt="JETRAG1" src="https://github.com/user-attachments/assets/b7821fff-99e5-4f20-97ba-c40a22ebedba" />
 
