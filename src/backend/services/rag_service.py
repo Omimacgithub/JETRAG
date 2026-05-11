@@ -119,11 +119,10 @@ def stream_rag_response(
         chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
         
         context = "\n\n".join(chunk_texts)
-        prompt = f"""Context information is below.
----------------------
+        prompt = f"""---------------------
 {context}
 ---------------------
-Given the context information and not prior knowledge, answer the question.
+Given the above context information and not prior knowledge, answer the question using Markdown syntax. Cite context fragments using the structure: "(source: )" to support your answer.
 Q: {question}
 A:"""
         full_response = ""
@@ -131,7 +130,7 @@ A:"""
           output = llm(
             prompt,
             max_tokens=None,
-            suffix="Sure! ",
+            #suffix="Sure! ",
             stream=True
           )
           print("PREPARING FOR INFERENCE")
@@ -143,14 +142,17 @@ A:"""
               print(f"[{time.time()}] YIELDING CHUNK: {text}")
               yield format_sse_event(text)
         else:
-          chunk_list = ["Hey! ", "This ", "is ", "a ", "prebuilt ", "response ", 
-                        "¿Ustedes ", "piensan ", "antes ", "de ", "hablar ", "o ", "hablan ", 
-                        "tras ", "pensar? ", "Haré todo ", "lo que ", "pueda y un ", "poco más ", 
+
+          chunk_list = ["Hey! ", "This ", "is ", "a ", "prebuilt ", "response",
+           "¿Ustedes ", 
+                        #"¿Ustedes ", 
+                        "piensan ", "antes ", "de ", "hablar ", "o ", "hablan ", 
+                        "tras ", "pensar?\n", "**Haré todo**", " lo que ", "pueda y un ", "poco más ", 
                         "de lo que ", "pueda ", "si es que ", "eso es posible, ", "y haré todo ", 
                         "lo posible ", "e incluso lo ", "imposible ", "si también ", "lo imposible ", 
-                        "es posible", "Hay que ", "fabricar ", "máquinas ", "que nos ", "permitan seguir ", 
+                        "es posible\n", "Hay que ", "fabricar ", "máquinas ", "que nos ", "permitan seguir ", 
                         "fabricando ", "máquinas ", "porque lo ", "que no va a ", "hacer nunca la ", "máquina es ", 
-                        "fabricar ", "máquinas"]
+                        "fabricar ", "**máquinas**"]
           for chunk in chunk_list:
             #print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
             time.sleep(0.1)
@@ -170,12 +172,12 @@ A:"""
 
 def format_sse_event(data: str) -> str:
     """Format data as SSE event"""
-    return f"data: {data}\n\n"
+    return f"data: {data}[ENDLINE]"
 
 
 def format_sse_done() -> str:
     """Format SSE done event"""
-    return "data: [DONE]\n\n"
+    return "data: [DONE][ENDLINE]"
 
 
 def store_full_response(

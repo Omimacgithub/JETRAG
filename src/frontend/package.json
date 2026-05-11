@@ -12,19 +12,21 @@
     "clin": "rm -rf node_modules/ package-lock.json"
   },
   "peerDependencies": {
-		"svelte": "^5.0.0"
-	},
-
-  "devDependencies": {
-	"@sveltejs/adapter-auto": "^7.0.1",
-		"@sveltejs/kit": "^2.57.0",
-		"@sveltejs/package": "^2.5.7",
-		"@sveltejs/vite-plugin-svelte": "^7.0.0",
-		"publint": "^0.3.18",
-		"svelte": "^5.55.2",
-		"svelte-check": "^4.4.6",
-		"typescript": "^6.0.2",
-		"vite": "^8.0.7"
+    "svelte": "^5.0.0"
   },
-  "type": "module"
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^7.0.1",
+    "@sveltejs/kit": "^2.57.0",
+    "@sveltejs/package": "^2.5.7",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "publint": "^0.3.18",
+    "svelte": "^5.55.2",
+    "svelte-check": "^4.4.6",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.7"
+  },
+  "type": "module",
+  "dependencies": {
+    "svelte-marked": "^0.8.0"
+  }
 }

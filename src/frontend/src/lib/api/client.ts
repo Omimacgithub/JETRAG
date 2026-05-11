@@ -161,7 +161,8 @@ export const chatAPI = {
 		
 		while (true) {
 			const { done, value } = await reader.read();
-			//console.log(decoder.decode(value));//, { stream: true }));
+			let decoded = decoder.decode(value, { stream: true });
+			//console.log(JSON.stringify(decoded));
 			
 			if (done) {
 				if (buffer.startsWith('data: ')) {
@@ -174,9 +175,10 @@ export const chatAPI = {
 				break;
 			}
 			
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n\n');
+			buffer += decoded;
+			const lines = buffer.split('[ENDLINE]');
 			buffer = lines.pop() || '';
+			//console.log(JSON.stringify(buffer));
 			
 			for (const line of lines) {
 				if (line.startsWith('data: ')) {

@@ -1,5 +1,6 @@
 <script>
-	export let message;
+	export let message;	
+	import SvelteMarkdown from 'svelte-marked'
 	
 	function getRoleClass(role) {
 		return role === 'USER' ? 'ml-auto bg-blue-500 bg-opacity-20' : 'mr-auto bg-gray-500 bg-opacity-10';
@@ -41,7 +42,7 @@
 		<div 
 			class={`p-3 rounded-lg max-w-xl break-words ${getRoleClass(message.role)}`}
 		>
-			{message.content}
+			<SvelteMarkdown source={message.content}/>
 			
 			{#if message.role === 'ASSISTANT' && message.sourcesUsed && message.sourcesUsed.length > 0}
 				<div class="mt-2 pt-2 border-t border-gray-200">

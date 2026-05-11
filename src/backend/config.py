@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     TOP_K: int = 5
 
     #Flag to not load LLM model (for frontend debugging).
-    MOCK_MODE : bool = True
+    MOCK_MODE : bool = False
 
     # Number of tokens for input prompt (power of 2). Set it to 0 to use model max
     TEXT_CONTEXT : int = 4096
