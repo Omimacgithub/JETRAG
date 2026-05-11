@@ -22,6 +22,7 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [ ] Source processing from URL
 - [ ] Source processing from file
 - [ ] Stop LLM response generation event
+- [ ] Publish inference engines study (last section)
 
 ## Software Requirements
 
@@ -201,11 +202,3 @@ PROJECT_NAME=JETRAG
 
 ## Inference engines study
 Due to the "poor" RAM memory provided by NVIDIA Jetson Orin Nano (8 GB), I was forced to change the initial proposal for the LLM inference environment (Triton server + TensorRT-LLM). Therefore, I performed a study of several inference backends to find the most suitable for the use case of this project and for the strict memory requirements of Jetson Orin Nano.
-
-## License
-
-This project is proprietary software. All rights reserved.
-
-## Support
-
-For issues or questions, please refer to the documentation or contact the development team.
