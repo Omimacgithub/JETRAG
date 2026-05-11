@@ -18,6 +18,7 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [x] Add processed sources to user query for LLM reasoning
 - [x] Persitent conversations during a web session (use of localStorage)
 - [x] Streaming LLM responses
+- [ ] (Not tested yet) Docker deployment
 - [ ] Proper text rendering (tables aren't displayed correctly)
 - [ ] Source processing from URL
 - [ ] Source processing from file
