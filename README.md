@@ -2,6 +2,22 @@
 
 <img width="1080" height="765" alt="JETRAG1" src="https://github.com/user-attachments/assets/b7821fff-99e5-4f20-97ba-c40a22ebedba" />
 
+## Table of contents
+
+- [JETRAG](#jetrag)
+- [Project state](#project-state)
+- [Software Requirements](#software-requirements)
+  - [Local Development](#local-development)
+  - [Docker Deployment](#docker-deployment)
+- [Local Development Setup](#local-development-setup)
+  - [Backend (FastAPI)](#backend-fastapi)
+  - [Frontend (SvelteKit)](#frontend-sveltekit)
+- [How to run it?](#how-to-run-it)
+- [Docker Deployment](#docker-deployment)
+  - [Prerequisites](#prerequisites)
+  - [Deployment Steps](#deployment-steps)
+
+
 JETRAG is a web application that allows users to interact with a **Retrieval-Augmented Generation (RAG) assistant** using "chests" (collections of source information like plain text, URLs, or files). The application runs **entirely on-premise** to ensure confidentiality and low latency responses. This project is being developed and executed on **NVIDIA Jetson Orin Nano 8GB** device.
 
 > [!NOTE]
@@ -203,3 +219,13 @@ PROJECT_NAME=JETRAG
 
 ## Inference engines study
 Due to the "poor" RAM memory provided by NVIDIA Jetson Orin Nano (8 GB), I was forced to change the initial proposal for the LLM inference environment (Triton server + TensorRT-LLM). Therefore, I performed a study of several inference backends to find the most suitable for the use case of this project and for the strict memory requirements of Jetson Orin Nano.
+
+## What I've learned
+- Better understanding of transformers architecture (attention score calculation, KV cache and so)
+- Use of OpenCode for code development and OpenSpec for Spec Driven Development
+- How a basic RAG pipeline works
+- Creation and manteniance of a full-stack application with FastAPI and SvelteKit
+- Execution of tiny LLMs on a memory constrained device (NVIDIA Jetson Orin Nano)
+- Data persistence with SQLAlchemy, ChromaDB and localStorage
+- Streaming of LLM responses with FastAPI and SvelteKit
+- Frontend programming being aware of browser-side and server-side code execution (avoiding ReferenceError)
