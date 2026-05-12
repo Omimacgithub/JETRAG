@@ -25,13 +25,14 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 
 ## Project state
 - [x] Frontend view
-- [x] Backend (APIs for managing chests, sources and chat)
+- [x] Backend (APIs and CRUD operations for managing chests, sources and chat)
 - [x] Frontend-backend integration
 - [x] Source and chest data persistence with SQLite
 - [x] Source processing from plain text
 - [x] RAG pipeline with vector store and search using ChromaDB
 - [x] Integrate LLM into chat
 - [x] Add processed sources to user query for LLM reasoning
+- [x] Sources filtering by enabling checkboxes on frontend
 - [x] Persitent conversations during a web session (use of localStorage)
 - [x] Streaming LLM responses
 - [ ] (Not tested yet) Docker deployment
