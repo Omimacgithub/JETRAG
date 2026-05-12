@@ -4,7 +4,7 @@
 
 ## Table of contents
 
-- [JETRAG](#jetrag)
+- [About JETRAG](#about-jetrag)
 - [Project state](#project-state)
 - [Software Requirements](#software-requirements)
   - [Local Development](#local-development)
@@ -17,6 +17,7 @@
   - [Prerequisites](#prerequisites)
   - [Deployment Steps](#deployment-steps)
 
+## About JETRAG
 
 JETRAG is a web application that allows users to interact with a **Retrieval-Augmented Generation (RAG) assistant** using "chests" (collections of source information like plain text, URLs, or files). The application runs **entirely on-premise** to ensure confidentiality and low latency responses. This project is being developed and executed on **NVIDIA Jetson Orin Nano 8GB** device.
 
