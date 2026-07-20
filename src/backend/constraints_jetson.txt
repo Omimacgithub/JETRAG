@@ -1,3 +1,2 @@
 torch @ https://developer.download.nvidia.com/compute/redist/jp/v61/pytorch/torch-2.5.0a0+872d972e41.nv24.08.17622132-cp310-cp310-linux_aarch64.whl#sha256=6f75fd2d2ef840ede1a90dbcf40a5458214bee26cc803fa510cda2e8978d972a
 tokenizers==0.22.2
-numpy<2

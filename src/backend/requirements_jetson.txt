@@ -1,4 +1,4 @@
---constraint constraints.txt
+--constraint constraints_jetson.txt
 fastapi
 uvicorn
 sqlalchemy
@@ -10,4 +10,3 @@ pydantic-settings
 scikit-learn
 transformers
 sentence_transformers
-llama_cpp_python
