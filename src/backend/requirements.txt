@@ -12,3 +12,5 @@ transformers
 sentence_transformers
 ragas
 llama_cpp_python
+ruff
+pytest
