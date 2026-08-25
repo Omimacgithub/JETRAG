@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+chromadb
+llama-index
+httpx
+pydantic
+pydantic-settings
+scikit-learn

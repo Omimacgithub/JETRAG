@@ -16,7 +16,7 @@ def get_or_create_collection(embedding_function=None, collection_name: str = "je
     """Get or create a ChromaDB collection"""
     try:
         collection = chroma_client.get_collection(name=collection_name)
-    except:
+    except ValueError: # The collection does not exists
         collection = chroma_client.create_collection(name=collection_name, embedding_function=embedding_function)
     return collection
 

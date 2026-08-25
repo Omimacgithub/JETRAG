@@ -1,10 +1,9 @@
-*.py
 *.env
 *.db
 *.sqlite3
 *data/chroma/*
 src/backend/data/chroma/*
-*venv/*
+src/venv/*
 src/frontend/node_modules/*
 *__pycache__*
 *.svelte-kit*

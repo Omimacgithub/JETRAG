@@ -1,0 +1,8 @@
+# NOTE: extracted from llama_cpp_python project
+[tool.ruff.lint]
+select = ["E4", "E7", "E9"]
+ignore = ["E712"]
+
+[tool.pytest.ini_options]
+addopts = ["--ignore=src/backend/tests/test_api/","--ignore=src/backend/tests/test_core/","--ignore=src/backend/tests/test_services/"]
+testpaths = "src/backend/tests"
