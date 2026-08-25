@@ -1,0 +1,25 @@
+name: Check Lint and tests
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Install dependencies
+      run: python3 -m pip install -r requirements_test.txt
+    - name: Lint check with ruff
+      run: |
+        ruff check
+        ruff format --check
+    - name: Run tests with pytest
+      run: pytest --full-trace -v
+
