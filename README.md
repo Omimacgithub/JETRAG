@@ -1,4 +1,4 @@
-# JETRAG - Local RAG assitant targeting NVIDIA Jetson embedded systems
+# JETRAG - Local RAG assistant targeting NVIDIA Jetson embedded systems
 
 <img width="1080" height="765" alt="JETRAG1" src="https://github.com/user-attachments/assets/b7821fff-99e5-4f20-97ba-c40a22ebedba" />
 
@@ -83,7 +83,7 @@ venv\Scripts\activate
 3. Install backend dependencies:
 ```bash
 cd src/backend
-pip install -r requirements.txt -c constraints.txt
+CMAKE_ARGS="-DGGML_CUDA=on" python3 -m pip install -r requirements.txt -c constraints_<x86 or jetson>.txt
 ```
 
 4. Start the backend server:

@@ -9,7 +9,7 @@ from src.backend.models.schemas import ChatMessage, ChatMessageCreate, RAGQuery,
 from src.backend.models.source import Source
 from src.backend.models.chat_message import ChatMessage as DBChatMessage
 from src.backend.services import rag_service
-from src.backend.config import settings
+from src.backend.config import config
 #from fastapi.background import BackgroundTasks
 
 router = APIRouter()

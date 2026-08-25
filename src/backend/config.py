@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     # Embeddings model path
     EMBEDDINGS_MODEL_PATH: str = HF_MODELS_PATH + "models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/"
 
+    # --------------------
+    # --- RAG SETTINGS ---
+    # --------------------
+
     #Trigger llama_index SentenceSplitter, otherwise a simple regexp splitter is used
     LLAMA_SPLITTER: bool = True
     #Set size of chunk text division
@@ -27,11 +31,36 @@ class Settings(BaseSettings):
     #Flag to not load LLM model (for frontend debugging).
     MOCK_MODE : bool = False
 
-    # Number of tokens for input prompt (power of 2). Set it to 0 to use model max
-    TEXT_CONTEXT : int = 4096
+    # ------------------------------------------------------
+    # --- LLM SETTINGS (used on services/rag_service.py) ---
+    # ------------------------------------------------------
 
     #GGUF model for inference on llama.cpp
-    GGUF_MODEL: str = HF_MODELS_PATH + "models--unsloth--gemma-4-E2B-it-GGUF/snapshots/f064409f340b34190993560b2168133e5dbae558/gemma-4-E2B-it-Q4_K_S.gguf"
+    GGUF_MODEL: str = HF_MODELS_PATH + "models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf"
+
+    # TODO: Enables model thinking
+    ENABLE_THINKING: bool = False
+
+    # Print to stdout inference tokens as they are generated
+    STREAMING: bool = True
+
+    # Max tokens for model context (None if max token context)
+    MAX_TOKENS: int = 4096 #16384 #8192 #6144 #4096
+
+    # Sets the number of tokens processed on each model forward pass
+    BATCH_SIZE: int = 256
+
+    # Number of model layers to execute on GPU (-1 to execute all layers, else total_model_layers - GPU_LAYERS = layers to offload to CPU)
+    GPU_LAYERS: int = 37
+
+    # Set bit precission for K cache content
+    TYPE_K: int = 8
+
+    # Set bit precission for V cache content
+    TYPE_V: int = 8
+
+    # Saves memory with no performance impact
+    FLASH_ATTN: bool = True
     
     # API
     API_V1_STR: str = "/api"
@@ -41,4 +70,4 @@ class Settings(BaseSettings):
         case_sensitive = True
         env_file = ".env"
 
-settings = Settings()
+config = Settings()

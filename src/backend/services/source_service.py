@@ -7,10 +7,10 @@ from src.backend.models.schemas import SourceCreate, SourceUpdate
 from src.backend.core.vector_store import get_or_create_collection, add_to_collection, delete_from_collection
 import logging
 #Embedding generation using CUDA acceleration
-from src.backend.config import settings
+from src.backend.config import config
 from chromadb.utils import embedding_functions
 
-embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(device='cuda')#model_name=settings.EMBEDDINGS_MODEL_PATH, )
+embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(device='cuda')#model_name=config.EMBEDDINGS_MODEL_PATH, )
 
 '''
 class SentenceTransformerEmbeddingFunction:
@@ -23,9 +23,9 @@ class SentenceTransformerEmbeddingFunction:
         return embeddings.tolist()
 '''
 
-chunk_size = int(settings.CHUNK_SIZE)
-chunk_overlap = int(settings.CHUNK_OVERLAP)
-llama_splitter = bool(settings.LLAMA_SPLITTER)
+chunk_size = int(config.CHUNK_SIZE)
+chunk_overlap = int(config.CHUNK_OVERLAP)
+llama_splitter = bool(config.LLAMA_SPLITTER)
 
 if llama_splitter:
     from llama_index.core.node_parser import SentenceSplitter

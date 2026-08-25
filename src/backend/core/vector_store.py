@@ -1,10 +1,10 @@
 import chromadb
 from chromadb.config import Settings
-from src.backend.config import settings
+from src.backend.config import config
 
 # Initialize ChromaDB client
 chroma_client = chromadb.PersistentClient(
-    path=settings.CHROMA_PERSIST_DIRECTORY,
+    path=config.CHROMA_PERSIST_DIRECTORY,
     settings=Settings(
         anonymized_telemetry=False,
         allow_reset=True,

@@ -1,6 +1,6 @@
 import logging
 import time
-from src.backend.config import settings
+from src.backend.config import config
 from typing import List, Tuple, AsyncGenerator
 from sqlalchemy.orm import Session
 from src.backend.models.source import Source
@@ -8,19 +8,25 @@ from src.backend.core.vector_store import get_or_create_collection, query_collec
 from llama_cpp import Llama
 logger = logging.getLogger(__name__)
 
-from src.backend.config import settings
-
-if not settings.MOCK_MODE:
-  llm = Llama(model_path=settings.GGUF_MODEL, n_ctx=settings.TEXT_CONTEXT)
+if not config.MOCK_MODE:
+  llm = Llama(
+      model_path=config.GGUF_MODEL, 
+      n_ctx=config.MAX_TOKENS,
+      verbose=False,
+      n_gpu_layers=config.GPU_LAYERS,
+      n_batch=config.BATCH_SIZE,
+      type_k=config.TYPE_K,
+      type_v=config.TYPE_V,
+      flash_attn=config.FLASH_ATTN)
 
 #Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
-print("Built Llama class and loaded " + "'"  + settings.GGUF_MODEL.split("/")[-1] + "'" + " model")
+print("Built Llama class and loaded " + "'"  + config.GGUF_MODEL.split("/")[-1] + "'" + " model")
 
 def retrieve_relevant_chunks(
     db: Session, 
     chest_id: int, 
     question: str, 
-    top_k: int = settings.TOP_K
+    top_k: int = config.TOP_K
 ) -> List[Tuple[str, dict]]:
     """Retrieve relevant chunks for a question from a chest's sources"""
     try:
@@ -126,12 +132,12 @@ Given the above context information and not prior knowledge, answer the question
 Q: {question}
 A:"""
         full_response = ""
-        if not settings.MOCK_MODE:
+        if not config.MOCK_MODE:
           output = llm(
             prompt,
-            max_tokens=None,
+            max_tokens=config.MAX_TOKENS,
             #suffix="Sure! ",
-            stream=True
+            stream=config.STREAMING
           )
           print("PREPARING FOR INFERENCE")
           for item in output:
@@ -225,7 +231,7 @@ Given the context information and not prior knowledge, answer the question.
 Q: {question}
 A:"""
         print("USER PROMPT: ", prompt)
-        if not settings.MOCK_MODE:
+        if not config.MOCK_MODE:
           output = llm(
             prompt, # Prompt
             max_tokens=0, #32, # Generate up to 32 tokens, set to None to generate up to the end of the context window

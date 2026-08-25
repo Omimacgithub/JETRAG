@@ -10,4 +10,5 @@ src/frontend/node_modules/*
 *.svelte-kit*
 *package-lock.json
 .opencode/*
-src/venv/*
+openspec/*
+src/backend/venv/*
