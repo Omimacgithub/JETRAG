@@ -86,7 +86,13 @@ cd src/backend
 CMAKE_ARGS="-DGGML_CUDA=on" python3 -m pip install -r requirements.txt -c constraints_<x86 or jetson>.txt
 ```
 
-4. Start the backend server:
+4. Run lint and tests:
+```bash
+ruff check
+pytest
+```
+
+5. Start the backend server:
 ```bash
 cd $PROJECT_HOME
 uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
@@ -113,7 +119,23 @@ npm run build
 cp .env.template .env
 ```
 
-4. Start the development server:
+4. Run tests:
+```bash
+npm run test
+```
+
+5. Run format and lint checks:
+```bash
+npm run lint
+```
+
+To fix linter and formatting respectively:
+```bash
+npm run lint -- --fix
+npm run format
+```
+
+6. Start the development server:
 ```bash
 npm run dev
 ```

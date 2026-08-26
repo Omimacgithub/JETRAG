@@ -17,10 +17,13 @@
     "svelte": "^5.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@sveltejs/adapter-auto": "^7.0.1",
     "@sveltejs/kit": "^2.57.0",
     "@sveltejs/package": "^2.5.7",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
     "jsdom": "^29.1.1",
     "publint": "^0.3.18",
     "svelte": "^5.55.2",

@@ -1,7 +1,6 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapter from "@sveltejs/adapter-auto";
 //import preprocess from 'svelte-preprocess';
-import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 /** @type {import('@sveltejs/kit').Config} */
 /*
@@ -18,10 +17,8 @@ const config = {
 */
 
 const config = {
-	// Note the additional `{ script: true }`
-	preprocess: vitePreprocess({ script: true })
+  // Note the additional `{ script: true }`
+  preprocess: vitePreprocess({ script: true }),
 };
 
-
 export default config;
-
