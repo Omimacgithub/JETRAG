@@ -1,4 +1,4 @@
-name: Check Lint and tests
+name: Check backend and frontend
 
 on:
 #  pull_request:
@@ -12,29 +12,20 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-    - name: Install dependencies
-      run: python3 -m pip install -r src/backend/requirements_test.txt
-    - name: Lint check with ruff
-      run: |
-        ruff check
-        ruff format --check
-    - name: Run tests with pytest
-      run: pytest --full-trace -v
+    - uses: actions/checkout@v5
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: ${{ env.NODE_VERSION }}
+        node-version: 22
         cache: 'npm'
+    - run: |
+        npm ci
+        npm test
+
     - name: Generate package-lock.json, install and build the application
       working-directory: src/frontend
       run: |
-        npm install
-        npm install
+        npm ci
         npm run build
     - name: Run tests
       working-directory: src/frontend
