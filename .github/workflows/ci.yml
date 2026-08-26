@@ -31,9 +31,11 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
     - name: Generate package-lock.json, install and build the application
+      working-directory: src/frontend
       run: |
         npm install
         npm install
         npm run build
     - name: Run tests
+      working-directory: src/frontend
       run: npm run test
