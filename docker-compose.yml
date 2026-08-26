@@ -2,28 +2,43 @@
 version: '3.8'
 services:
   backend:
-    build: ./backend
+    image: ${BACKEND_IMAGE_TAG}
     runtime: nvidia
+    network_mode: "host"
+    stdin_open: true
+    tty: true
+    privileged: true
+    stop_signal: SIGINT
     environment:
+      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIE: graphics
       CUDA_VISIBLE_DEVICES: "0"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]
-        limits:
-          memory: 6G
     volumes:
-      - ./data:/app/data
-      - ./triton:/app/triton:ro  # Modelos pre-compilados
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+      - msgs-data:./jetrag.db
+      - emb-data:./data/chroma/
+      - $HOME/.cache/huggingface/hub:./models:ro  # Modelos pre-compilados
+    #command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   frontend:
-    build: ./frontend
+    image: ${FRONTEND_IMAGE_TAG}
+    network_mode: "host"
+    stdin_open: true
+    tty: true
+    privileged: true
+    stop_signal: SIGINT
     ports:
       - "3000:3000"
     depends_on:
       - backend
+  
+  volumes:
+    msgs-data:
+    emb-data:
