@@ -16,17 +16,15 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: 22
+        cache-dependency-path: ./src/frontend/package-lock.json
+        node-version: 24.14.1
         cache: 'npm'
-    - run: |
-        npm ci
-        npm test
-
-    - name: Generate package-lock.json, install and build the application
-      working-directory: src/frontend
+    - name: Install and build the application      
       run: |
         npm ci
         npm run build
+      working-directory: ./src/frontend
+
     - name: Run tests
-      working-directory: src/frontend
       run: npm run test
+      working-directory: ./src/frontend
