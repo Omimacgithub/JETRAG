@@ -28,7 +28,9 @@ class TestSourceService:
 
     def test_get_source(self, db_session):
         chest = self._create_chest(db_session)
-        data = SourceCreate(name="Get Src", type="TXT", content="content", chest_id=chest.id)
+        data = SourceCreate(
+            name="Get Src", type="TXT", content="content", chest_id=chest.id
+        )
         created = source_service.create_source(db_session, data)
 
         found = source_service.get_source(db_session, created.id)
@@ -43,7 +45,12 @@ class TestSourceService:
         for i in range(3):
             source_service.create_source(
                 db_session,
-                SourceCreate(name=f"Src {i}", type="TXT", content=f"content {i}", chest_id=chest.id),
+                SourceCreate(
+                    name=f"Src {i}",
+                    type="TXT",
+                    content=f"content {i}",
+                    chest_id=chest.id,
+                ),
             )
 
         sources = source_service.get_sources_by_chest(db_session, chest.id)
@@ -57,7 +64,9 @@ class TestSourceService:
         chest = self._create_chest(db_session)
         created = source_service.create_source(
             db_session,
-            SourceCreate(name="Original", type="TXT", content="content", chest_id=chest.id),
+            SourceCreate(
+                name="Original", type="TXT", content="content", chest_id=chest.id
+            ),
         )
         updated = source_service.update_source(
             db_session, created.id, SourceUpdate(name="Updated")
@@ -68,7 +77,9 @@ class TestSourceService:
         chest = self._create_chest(db_session)
         created = source_service.create_source(
             db_session,
-            SourceCreate(name="Hash Test", type="TXT", content="original", chest_id=chest.id),
+            SourceCreate(
+                name="Hash Test", type="TXT", content="original", chest_id=chest.id
+            ),
         )
         original_hash = created.content_hash
 
@@ -81,7 +92,9 @@ class TestSourceService:
         chest = self._create_chest(db_session)
         created = source_service.create_source(
             db_session,
-            SourceCreate(name="Toggle", type="TXT", content="content", chest_id=chest.id),
+            SourceCreate(
+                name="Toggle", type="TXT", content="content", chest_id=chest.id
+            ),
         )
         updated = source_service.update_source(
             db_session, created.id, SourceUpdate(is_enabled=False)
@@ -89,14 +102,18 @@ class TestSourceService:
         assert updated.is_enabled is False
 
     def test_update_source_not_found(self, db_session):
-        result = source_service.update_source(db_session, 999, SourceUpdate(name="Nope"))
+        result = source_service.update_source(
+            db_session, 999, SourceUpdate(name="Nope")
+        )
         assert result is None
 
     def test_delete_source(self, db_session):
         chest = self._create_chest(db_session)
         created = source_service.create_source(
             db_session,
-            SourceCreate(name="Delete", type="TXT", content="content", chest_id=chest.id),
+            SourceCreate(
+                name="Delete", type="TXT", content="content", chest_id=chest.id
+            ),
         )
         deleted = source_service.delete_source(db_session, created.id)
         assert deleted is not None
@@ -112,9 +129,12 @@ class TestSourceService:
         chest = self._create_chest(db_session)
         source = source_service.create_source(
             db_session,
-            SourceCreate(name="Hash", type="TXT", content="unique content", chest_id=chest.id),
+            SourceCreate(
+                name="Hash", type="TXT", content="unique content", chest_id=chest.id
+            ),
         )
         import hashlib
+
         expected_hash = hashlib.md5("unique content".encode()).hexdigest()
         assert source.content_hash == expected_hash
 

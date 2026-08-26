@@ -12,7 +12,9 @@ class TestRAGService:
     def _create_source(self, db_session, chest_id, content="Test content for RAG."):
         return source_service.create_source(
             db_session,
-            SourceCreate(name="RAG Source", type="TXT", content=content, chest_id=chest_id),
+            SourceCreate(
+                name="RAG Source", type="TXT", content=content, chest_id=chest_id
+            ),
         )
 
     def test_format_sse_event(self):
@@ -58,7 +60,9 @@ class TestRAGService:
         chest = self._create_chest(db_session)
         self._create_source(db_session, chest.id)
 
-        result = await rag_service.process_rag_query(db_session, chest.id, "What is this?")
+        result = await rag_service.process_rag_query(
+            db_session, chest.id, "What is this?"
+        )
         assert result["answer"] == "Answer here"
 
     def test_stream_rag_response_no_chunks(self, db_session):
@@ -76,8 +80,11 @@ class TestRAGService:
         chest = self._create_chest(db_session)
         rag_service.store_full_response(db_session, chest.id, "Hello", [])
         from src.backend.models.chat_message import ChatMessage as DBChatMessage
-        msgs = db_session.query(DBChatMessage).filter(
-            DBChatMessage.chest_id == chest.id
-        ).all()
+
+        msgs = (
+            db_session.query(DBChatMessage)
+            .filter(DBChatMessage.chest_id == chest.id)
+            .all()
+        )
         assert len(msgs) == 1
         assert msgs[0].content == "Hello"

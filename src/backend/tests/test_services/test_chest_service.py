@@ -51,15 +51,11 @@ class TestChestService:
 
     def test_update_chest_partial(self, db_session):
         created = chest_service.create_chest(db_session, ChestCreate(name="Original"))
-        updated = chest_service.update_chest(
-            db_session, created.id, ChestUpdate()
-        )
+        updated = chest_service.update_chest(db_session, created.id, ChestUpdate())
         assert updated.name == "Original"
 
     def test_update_chest_not_found(self, db_session):
-        result = chest_service.update_chest(
-            db_session, 999, ChestUpdate(name="Nope")
-        )
+        result = chest_service.update_chest(db_session, 999, ChestUpdate(name="Nope"))
         assert result is None
 
     def test_delete_chest(self, db_session):

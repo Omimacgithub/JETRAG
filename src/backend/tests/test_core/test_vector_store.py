@@ -11,7 +11,9 @@ from src.backend.core.vector_store import (
 
 class TestVectorStore:
     def test_get_or_create_collection_creates_new(self):
-        with patch.object(chroma_client, "get_collection", side_effect=Exception("not found")):
+        with patch.object(
+            chroma_client, "get_collection", side_effect=Exception("not found")
+        ):
             with patch.object(chroma_client, "create_collection") as mock_create:
                 mock_collection = MagicMock()
                 mock_create.return_value = mock_collection
@@ -81,7 +83,9 @@ class TestVectorStore:
 
     def test_get_or_create_collection_returns_existing(self):
         mock_collection = MagicMock()
-        with patch.object(chroma_client, "get_collection", return_value=mock_collection):
+        with patch.object(
+            chroma_client, "get_collection", return_value=mock_collection
+        ):
             with patch.object(chroma_client, "create_collection") as mock_create:
                 result = get_or_create_collection(collection_name="existing")
                 mock_create.assert_not_called()

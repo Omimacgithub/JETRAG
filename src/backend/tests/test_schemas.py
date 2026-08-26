@@ -34,6 +34,7 @@ class TestChestSchemas:
 
     def test_chest_full(self):
         from datetime import datetime
+
         ts = datetime.now()
         data = Chest(id=1, name="Chest", created_at=ts, updated_at=ts)
         assert data.id == 1
@@ -41,6 +42,7 @@ class TestChestSchemas:
 
     def test_chest_updated_at_none(self):
         from datetime import datetime
+
         data = Chest(id=1, name="Chest", created_at=datetime.now(), updated_at=None)
         assert data.updated_at is None
 
@@ -64,6 +66,7 @@ class TestSourceSchemas:
 
     def test_source_full(self):
         from datetime import datetime
+
         ts = datetime.now()
         data = Source(
             id=1,

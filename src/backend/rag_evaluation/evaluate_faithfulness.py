@@ -31,12 +31,12 @@ def generate_responses(dataset: Dataset, client: OpenAI) -> list[str]:
                 {
                     "role": "system",
                     "content": "Answer the question using ONLY the provided context.",
-                    "refusal": "refuso"
+                    "refusal": "refuso",
                 },
                 {
                     "role": "user",
                     "content": f"Context:\n{context_block}\n\nQuestion: {row['user_input']}",
-                    "refusal": "refuso"
+                    "refusal": "refuso",
                 },
             ],
             temperature=0.0,
@@ -49,9 +49,7 @@ def main() -> None:
     client = OpenAI(base_url=LLM_BASE_URL, api_key=API_KEY)
 
     judge_llm = llm_factory(LLM_MODEL, client=client)
-    judge_embeddings = RagasOpenAIEmbeddings(
-        model=LLM_MODEL, client=client
-    )
+    judge_embeddings = RagasOpenAIEmbeddings(model=LLM_MODEL, client=client)
 
     print(f"Loading dataset from {PARQUET_PATH}...")
     ds = load_dataset(PARQUET_PATH)

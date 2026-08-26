@@ -16,26 +16,35 @@ class TestChatAPI:
             "sources_used": [1],
         }
         chest_id = self._create_chest(client)
-        response = client.post("/api/chat/", json={
-            "question": "What is JETRAG?",
-            "chest_id": chest_id,
-            "stream": False,
-        })
+        response = client.post(
+            "/api/chat/",
+            json={
+                "question": "What is JETRAG?",
+                "chest_id": chest_id,
+                "stream": False,
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["answer"] == "Test answer"
         assert data["sources_used"] == [1]
 
     def test_chat_query_missing_chest_id(self, client):
-        response = client.post("/api/chat/", json={
-            "question": "Hello?",
-        })
+        response = client.post(
+            "/api/chat/",
+            json={
+                "question": "Hello?",
+            },
+        )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_chat_query_missing_question(self, client):
-        response = client.post("/api/chat/", json={
-            "chest_id": 1,
-        })
+        response = client.post(
+            "/api/chat/",
+            json={
+                "chest_id": 1,
+            },
+        )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @patch("src.backend.api.routes.chat.rag_service.stream_rag_response")
@@ -49,11 +58,14 @@ class TestChatAPI:
 
         chest_id = self._create_chest(client)
 
-        response = client.post("/api/chat/", json={
-            "question": "Stream test?",
-            "chest_id": chest_id,
-            "stream": True,
-        })
+        response = client.post(
+            "/api/chat/",
+            json={
+                "question": "Stream test?",
+                "chest_id": chest_id,
+                "stream": True,
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
         content = response.text
         assert "chunk1" in content
@@ -67,11 +79,14 @@ class TestChatAPI:
             "sources_used": [],
         }
         chest_id = self._create_chest(client)
-        response = client.post("/api/chat/", json={
-            "question": "Unknown?",
-            "chest_id": chest_id,
-            "stream": False,
-        })
+        response = client.post(
+            "/api/chat/",
+            json={
+                "question": "Unknown?",
+                "chest_id": chest_id,
+                "stream": False,
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert "couldn't find" in data["answer"]
@@ -81,8 +96,11 @@ class TestChatAPI:
     def test_chat_default_stream_false(self, mock_asyncio_run, client):
         mock_asyncio_run.return_value = {"answer": "answer", "sources_used": []}
         chest_id = self._create_chest(client)
-        response = client.post("/api/chat/", json={
-            "question": "test?",
-            "chest_id": chest_id,
-        })
+        response = client.post(
+            "/api/chat/",
+            json={
+                "question": "test?",
+                "chest_id": chest_id,
+            },
+        )
         assert response.status_code == status.HTTP_200_OK

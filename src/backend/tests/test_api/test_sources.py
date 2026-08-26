@@ -20,12 +20,15 @@ class TestSourceAPI:
 
     def test_create_source(self, client):
         chest_id = self._create_chest(client)
-        response = client.post("/api/sources/", json={
-            "name": "My Source",
-            "type": "TXT",
-            "content": "Some content here",
-            "chest_id": chest_id,
-        })
+        response = client.post(
+            "/api/sources/",
+            json={
+                "name": "My Source",
+                "type": "TXT",
+                "content": "Some content here",
+                "chest_id": chest_id,
+            },
+        )
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
         assert data["name"] == "My Source"
@@ -36,12 +39,15 @@ class TestSourceAPI:
 
     def test_get_source(self, client):
         chest_id = self._create_chest(client)
-        create_resp = client.post("/api/sources/", json={
-            "name": "Get Me",
-            "type": "TXT",
-            "content": "content",
-            "chest_id": chest_id,
-        })
+        create_resp = client.post(
+            "/api/sources/",
+            json={
+                "name": "Get Me",
+                "type": "TXT",
+                "content": "content",
+                "chest_id": chest_id,
+            },
+        )
         source_id = create_resp.json()["id"]
 
         response = client.get(f"/api/sources/{source_id}")
@@ -54,12 +60,15 @@ class TestSourceAPI:
 
     def test_update_source(self, client):
         chest_id = self._create_chest(client)
-        create_resp = client.post("/api/sources/", json={
-            "name": "Original",
-            "type": "TXT",
-            "content": "original content",
-            "chest_id": chest_id,
-        })
+        create_resp = client.post(
+            "/api/sources/",
+            json={
+                "name": "Original",
+                "type": "TXT",
+                "content": "original content",
+                "chest_id": chest_id,
+            },
+        )
         source_id = create_resp.json()["id"]
 
         response = client.patch(f"/api/sources/{source_id}", json={"name": "Updated"})
@@ -68,12 +77,15 @@ class TestSourceAPI:
 
     def test_update_source_disable(self, client):
         chest_id = self._create_chest(client)
-        create_resp = client.post("/api/sources/", json={
-            "name": "Toggle",
-            "type": "TXT",
-            "content": "content",
-            "chest_id": chest_id,
-        })
+        create_resp = client.post(
+            "/api/sources/",
+            json={
+                "name": "Toggle",
+                "type": "TXT",
+                "content": "content",
+                "chest_id": chest_id,
+            },
+        )
         source_id = create_resp.json()["id"]
 
         response = client.patch(f"/api/sources/{source_id}", json={"is_enabled": False})
@@ -86,12 +98,15 @@ class TestSourceAPI:
 
     def test_delete_source(self, client):
         chest_id = self._create_chest(client)
-        create_resp = client.post("/api/sources/", json={
-            "name": "Delete Me",
-            "type": "TXT",
-            "content": "content",
-            "chest_id": chest_id,
-        })
+        create_resp = client.post(
+            "/api/sources/",
+            json={
+                "name": "Delete Me",
+                "type": "TXT",
+                "content": "content",
+                "chest_id": chest_id,
+            },
+        )
         source_id = create_resp.json()["id"]
 
         response = client.delete(f"/api/sources/{source_id}")
@@ -106,11 +121,14 @@ class TestSourceAPI:
 
     def test_create_url_source(self, client):
         chest_id = self._create_chest(client)
-        response = client.post("/api/sources/", json={
-            "name": "URL Source",
-            "type": "URL",
-            "content": "https://example.com",
-            "chest_id": chest_id,
-        })
+        response = client.post(
+            "/api/sources/",
+            json={
+                "name": "URL Source",
+                "type": "URL",
+                "content": "https://example.com",
+                "chest_id": chest_id,
+            },
+        )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["type"] == "URL"

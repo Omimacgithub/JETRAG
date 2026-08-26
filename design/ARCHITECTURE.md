@@ -470,21 +470,19 @@ services:
 from fastapi import UploadFile, File
 import aiofiles
 
+
 @router.post("/sources/upload")
-async def upload_file(
-    chest_id: str,
-    file: UploadFile = File(...)
-):
+async def upload_file(chest_id: str, file: UploadFile = File(...)):
     # Límites
     if file.size > 10 * 1024 * 1024:  # 10MB
         raise HTTPException(413, "File too large")
-    
+
     # Stream a disco
     path = f"/data/uploads/{uuid4()}_{file.filename}"
-    async with aiofiles.open(path, 'wb') as f:
+    async with aiofiles.open(path, "wb") as f:
         while chunk := await file.read(64 * 1024):
             await f.write(chunk)
-    
+
     # Background processing (no bloquear request)
     await process_file_background(chest_id, path)
     return {"status": "processing", "path": path}

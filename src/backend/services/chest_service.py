@@ -3,11 +3,14 @@ from src.backend.models.chest import Chest
 from src.backend.models.schemas import ChestCreate, ChestUpdate
 from typing import List, Optional
 
+
 def get_chest(db: Session, chest_id: int):
     return db.query(Chest).filter(Chest.id == chest_id).first()
 
+
 def get_chests(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Chest).offset(skip).limit(limit).all()
+
 
 def create_chest(db: Session, chest: ChestCreate):
     db_chest = Chest(name=chest.name)
@@ -15,6 +18,7 @@ def create_chest(db: Session, chest: ChestCreate):
     db.commit()
     db.refresh(db_chest)
     return db_chest
+
 
 def update_chest(db: Session, chest_id: int, chest: ChestUpdate):
     db_chest = db.query(Chest).filter(Chest.id == chest_id).first()
@@ -24,6 +28,7 @@ def update_chest(db: Session, chest_id: int, chest: ChestUpdate):
         db.commit()
         db.refresh(db_chest)
     return db_chest
+
 
 def delete_chest(db: Session, chest_id: int):
     db_chest = db.query(Chest).filter(Chest.id == chest_id).first()

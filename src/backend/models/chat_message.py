@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, JSON
 from sqlalchemy.sql import func
 from src.backend.core.database import Base
 
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 

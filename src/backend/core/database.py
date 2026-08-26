@@ -4,16 +4,14 @@ from sqlalchemy.orm import sessionmaker
 from src.backend.config import config
 
 # Create SQLite engine
-engine = create_engine(
-    config.DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
+engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False})
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create Base class
 Base = declarative_base()
+
 
 # Dependency to get DB session
 def get_db():

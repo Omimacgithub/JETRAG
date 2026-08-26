@@ -8,16 +8,17 @@ import asyncio
 
 client = AsyncOpenAI(
     base_url="http://localhost:8000/v1/",  # local Ollama server
-    api_key="unused") # required by the client, ignored by Ollama
+    api_key="unused",
+)  # required by the client, ignored by Ollama
 
 llm = llm_factory("gemma4", client=client)
 # Login using e.g. `huggingface-cli login` to access this dataset
-#ds = load_dataset("dwb2023/ragas-golden-dataset")
+# ds = load_dataset("dwb2023/ragas-golden-dataset")
 
 # Create metric
 scorer = Faithfulness(llm=llm)
 
-'''
+"""
 async def running_free():
   scorerer = scorer.ascore(
     user_input="When was the first super bowl?",
@@ -31,4 +32,4 @@ async def running_free():
 # Evaluate
 result = asyncio.run(running_free())
 print(f"Faithfulness Score: {result.value}")
-'''
+"""

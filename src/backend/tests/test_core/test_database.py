@@ -35,7 +35,9 @@ class TestDatabaseCore:
             pass
 
     def test_table_creation(self, db_session):
-        result = db_session.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+        result = db_session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table'")
+        )
         tables = [row[0] for row in result]
         assert "chests" in tables
         assert "sources" in tables
