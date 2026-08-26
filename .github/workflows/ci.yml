@@ -1,15 +1,15 @@
 name: Check Lint and tests
 
 on:
-  pull_request:
-    types: [opened, reopened]
+#  pull_request:
+#    types: [opened, reopened]
 
-#  push:
-#    branches:
-#      - master
+  push:
+    branches:
+      - master
 
 jobs:
-  build-linux:
+  checks:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -25,4 +25,15 @@ jobs:
         ruff format --check
     - name: Run tests with pytest
       run: pytest --full-trace -v
-
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    - name: Generate package-lock.json, install and build the application
+      run: |
+        npm install
+        npm install
+        npm run build
+    - name: Run tests
+      run: npm run test
