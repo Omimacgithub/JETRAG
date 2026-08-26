@@ -1,9 +1,12 @@
 name: Check Lint and tests
 
 on:
-  push:
-    branches:
-      - master
+  pull_request:
+    types: [opened, reopened]
+
+#  push:
+#    branches:
+#      - master
 
 jobs:
   build-linux:
