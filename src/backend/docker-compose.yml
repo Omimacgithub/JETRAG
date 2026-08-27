@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     image: backend
-    build: src/backend/
+    build: .
     runtime: nvidia
     network_mode: "host"
     stdin_open: true
@@ -32,19 +32,6 @@ services:
       - emb-data:/app/data/chroma/
       - $HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub # Modelos pre-compilados
 
-  frontend:
-    image: frontend
-    build: src/frontend/
-    network_mode: "host"
-    stdin_open: true
-    tty: true
-    privileged: true
-    stop_signal: SIGINT
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-  
 volumes:
   msgs-data:
     external: true

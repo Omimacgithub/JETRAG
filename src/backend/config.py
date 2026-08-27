@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     HF_MODELS_PATH: str = os.getenv("HOME") + "/.cache/huggingface/hub/"
 
     # Database
-    DATABASE_URL: str = "sqlite:///jetrag.db"
+    DATABASE_URL: str = "sqlite:///msgs_data/jetrag.db"
 
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"

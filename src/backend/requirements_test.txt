@@ -9,3 +9,4 @@ pydantic-settings
 scikit-learn
 ruff
 pytest
+transformers
