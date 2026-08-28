@@ -85,7 +85,7 @@ jobs:
           context: ./src/frontend # Path to your frontend directory
           file: ./src/frontend/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          tags: ghcr.io/omimacgithub/jetrag/src/frontend:latest
 
   CDbackend:
     needs: CIbackend
@@ -114,4 +114,4 @@ jobs:
           context: ./src/backend # Path to your backend directory
           file: ./src/backend/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+          tags: ghcr.io/omimacgithub/jetrag/src/backend:latest
