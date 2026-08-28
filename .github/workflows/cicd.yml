@@ -15,7 +15,7 @@ jobs:
   # ----------------------------------
   # CI: Run backend and frontend tests
   # ----------------------------------
-  cibackend:
+  CIbackend:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -34,7 +34,7 @@ jobs:
     - name: Run tests with pytest
       run: pytest --full-trace -v
 
-  cifrontend:
+  CIfrontend:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -46,7 +46,7 @@ jobs:
         cache-dependency-path: ./src/frontend/package-lock.json
         node-version: 24.14.1
         cache: 'npm'
-    - name: Install and build the application      
+    - name: Install and build the application
       run: |
         npm ci
         npm run build
@@ -58,8 +58,8 @@ jobs:
   # -----------------------
   # CD: Build Docker images
   # -----------------------
-  cdfrontend:
-    needs: cifrontend
+  CDfrontend:
+    needs: CIfrontend
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -78,14 +78,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Frontend
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=sha,format=short
 
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v7
@@ -93,10 +85,10 @@ jobs:
           context: ./src/frontend # Path to your frontend directory
           file: ./src/frontend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
 
-  cdbackend:
-    needs: cibackend    
+  CDbackend:
+    needs: CIbackend
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -116,18 +108,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Backend
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
-          tags: |
-            type=sha,format=short
-
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v7
         with:
           context: ./src/backend # Path to your backend directory
           file: ./src/backend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest

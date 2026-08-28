@@ -28,15 +28,13 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    ports:
-      - "8000:8000"
     volumes:
       - msgs-data:/app/msgs_data/
       - emb-data:/app/data/chroma/
       - $HOME/.cache/huggingface/hub:/root/.cache/huggingface/hub # Modelos pre-compilados
 
   frontend:
-    image: ghcr.io/omimacgithub/jetrag/src/frontend
+    image: ghcr.io/omimacgithub/jetrag/src/frontend:latest
     #image: frontend
     #build: src/frontend/
     network_mode: "host"
@@ -44,8 +42,6 @@ services:
     tty: true
     privileged: true
     stop_signal: SIGINT
-    ports:
-      - "3000:3000"
     depends_on:
       - backend
   

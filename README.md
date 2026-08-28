@@ -147,23 +147,20 @@ npm run clin
 
 ## Docker Deployment
 
-### Prerequisites
-1. Install NVIDIA Container Toolkit:
-   ```bash
-   # Add the package repositories
-   distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-   curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-   curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-   
-   sudo apt-get update
-   sudo apt-get install -y nvidia-docker2
-   sudo systemctl restart docker
-   ```
+### Prerequisites (NVIDIA GPU build)
+- Nvidia drivers (sudo ubuntu-drivers install)
+
+- Docker
+
+- Docker Compose
+
+- [Nvidia Container Toolkit](#https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#installation)
 
 ### Deployment Steps
 
 1. Build and start the containers:
 ```bash
+cd $PROJECT_HOME
 docker-compose up --build
 ```
 
@@ -185,21 +182,21 @@ If you want to run the containers separately
 
 Pull the package published on the GitHub container registry
 ```bash
-docker pull ghcr.io/omimacgithub/jetrag/src/frontend:sha-65912f1
+docker pull ghcr.io/omimacgithub/jetrag/src/frontend
 ```
 
 Run
 ```bash
-docker run --rm --net host ghcr.io/omimacgithub/jetrag/src/frontend:sha-65912f1
+docker run --rm --net host ghcr.io/omimacgithub/jetrag/src/frontend
 ```
 
 ### Backend
 Pull the package published on the GitHub container registry
 ```bash
-docker pull ghcr.io/omimacgithub/jetrag/src/frontend:sha-65912f1
+docker pull ghcr.io/omimacgithub/jetrag/src/backend
 ```
 
-Run it using the src/backend/docker-compose.yml
+Build and run it using the src/backend/docker-compose.yml
 ```bash
 cd src/backend/
 docker compose up
