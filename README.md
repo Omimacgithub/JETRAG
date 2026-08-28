@@ -167,7 +167,9 @@ npm run clin
 docker-compose up --build
 ```
 
-2. The application will be available at:
+**Now follow the steps** below on **Backend section**
+
+The application will be available at:
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
@@ -175,6 +177,47 @@ docker-compose up --build
 3. To stop the containers:
 ```bash
 docker-compose down
+```
+
+If you want to run the containers separately
+
+### Frontend
+
+Pull the package published on the GitHub container registry
+```bash
+docker pull ghcr.io/omimacgithub/jetrag/src/frontend:sha-65912f1
+```
+
+Run
+```bash
+docker run --rm --net host ghcr.io/omimacgithub/jetrag/src/frontend:sha-65912f1
+```
+
+### Backend
+Pull the package published on the GitHub container registry
+```bash
+docker pull ghcr.io/omimacgithub/jetrag/src/frontend:sha-65912f1
+```
+
+Run it using the src/backend/docker-compose.yml
+```bash
+cd src/backend/
+docker compose up
+```
+Connect to the container
+```bash
+docker exec -it backend-backend-1 bash
+```
+
+Run the following commands to have llama_cpp_python working directly with your NVIDIA GPU:
+```bash
+CMAKE_ARGS="-DGGML_CUDA=on" python3 -m pip install --no-cache-dir -r requirements.txt -c constraints_x86.txt
+```
+
+Now you can start the server
+```bash
+cd $PROJECT_HOME
+uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## Service URLs
