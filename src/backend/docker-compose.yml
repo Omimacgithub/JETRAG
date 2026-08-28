@@ -17,6 +17,7 @@ services:
       LIBRARY_PATH: "/usr/local/cuda/targets/x86_64-linux/include/:/usr/local/lib/python3.10/site-packages/nvidia/cu13/include/:$LIBRARY_PATH"
       CXX_INCLUDE_PATH: "/usr/local/cuda/targets/x86_64-linux/include/:/usr/local/lib/python3.10/site-packages/nvidia/cu13/include/:$CXX_INCLUDE_PATH"
       C_INCLUDE_PATH: "/usr/local/cuda/targets/x86_64-linux/include/:/usr/local/lib/python3.10/site-packages/nvidia/cu13/include/:$C_INCLUDE_PATH"
+      CMAKE_CUDA_COMPILER: "/usr/local/cuda/bin"
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIE: graphics
       CUDA_VISIBLE_DEVICES: "0"
