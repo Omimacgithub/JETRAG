@@ -94,8 +94,6 @@ jobs:
           file: ./src/frontend/Dockerfile
           push: true
           tags: latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   cdbackend:
     needs: cibackend    
@@ -133,5 +131,3 @@ jobs:
           file: ./src/backend/Dockerfile
           push: true
           tags: latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
