@@ -20,7 +20,9 @@ def get_or_create_collection(
     """Get or create a ChromaDB collection"""
     try:
         collection = chroma_client.get_collection(name=collection_name)
-    except ValueError or NotFoundError:  # The collection does not exists. On debian trixie, NotFoundError is thrown when a collection doesn't exist
+    except (
+        ValueError or NotFoundError
+    ):  # The collection does not exists. On debian trixie, NotFoundError is thrown when a collection doesn't exist
         collection = chroma_client.create_collection(
             name=collection_name, embedding_function=embedding_function
         )
