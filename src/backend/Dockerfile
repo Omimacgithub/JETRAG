@@ -15,7 +15,7 @@ WORKDIR /app/src/backend
 COPY requirements_test.txt constraints_x86.txt .
 
 # Add sentence_transformers package
-RUN echo "sentence_transformers" >> /app/src/backend/requirements_test.txt
+RUN echo "\nsentence_transformers" >> /app/src/backend/requirements_test.txt
 
 # Install dependencies (matches 'Install dependencies' step)
 RUN python3 -m pip install --no-cache-dir -r requirements_test.txt -c constraints_x86.txt
@@ -34,19 +34,29 @@ COPY services services/
 COPY tests tests/
 
 # For test execution
-COPY ../../pyproject.toml /app
+#COPY ../../pyproject.toml /app/
 
-# Install compilers to build llama_cpp_python
+# Install tools compilers to build llama_cpp_python
 
 RUN apt update && apt install -y \
     build-essential \
-    cuda-nvcc-13-3 \
-    cublas-cuda-13 \
+    wget \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Add llama_cpp_python package
-#RUN echo "llama_cpp_python" >> /app/src/backend/requirements_test.txt
-#RUN CMAKE_ARGS="-DGGML_CUDA=on" python3 -m pip install --no-cache-dir -r requirements_test.txt -c constraints_x86.txt
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/debian13/$(arch)/cuda-keyring_1.1-1_all.deb
+
+RUN dpkg -i cuda-keyring_1.1-1_all.deb
+
+# Install cuda stuff
+
+RUN apt update && apt install -y \
+    cuda-nvcc-13-3 \
+    cublas-cuda-13 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+# Build llama_cpp_python package
+RUN CMAKE_ARGS="-DGGML_CUDA=on" python3 -m pip install --no-cache-dir -r requirements.txt -c constraints_x86.txt
 
 CMD ["python3"]
