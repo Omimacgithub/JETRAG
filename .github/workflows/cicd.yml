@@ -93,7 +93,7 @@ jobs:
           context: ./src/frontend # Path to your frontend directory
           file: ./src/frontend/Dockerfile
           push: true
-          tags: latest
+          tags: ${{ steps.meta.outputs.tags }}
 
   cdbackend:
     needs: cibackend    
@@ -130,4 +130,4 @@ jobs:
           context: ./src/backend # Path to your backend directory
           file: ./src/backend/Dockerfile
           push: true
-          tags: latest
+          tags: ${{ steps.meta.outputs.tags }}
