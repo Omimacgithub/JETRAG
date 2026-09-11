@@ -10,7 +10,9 @@ scikit-learn
 transformers
 # NOTE: sentence_transformers package installs torch and all nvidia cuda packages stuff
 sentence_transformers
-ragas
 llama_cpp_python
 ruff
 pytest
+# For RAG evaluation
+ragas
+mlflow

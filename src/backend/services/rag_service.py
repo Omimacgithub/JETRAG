@@ -1,5 +1,7 @@
 import logging
 import time
+import asyncio
+import pdb
 from src.backend.config import config
 from typing import List, Tuple, AsyncGenerator
 from sqlalchemy.orm import Session
@@ -108,66 +110,117 @@ def filter_sources_by_enabled(
     # Let's return the metadata for now and adjust the calling function
     return enabled_source_ids  # [meta for meta in chunk_metadata_list if meta["source_id"] in enabled_source_ids]
 
+def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
+    # 4.1 Compute question embeddings (handled in retrieve_relevant_chunks)
+    # 4.2 Vector search
+    # 4.3 Retrieve Top-K chunks
+    relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=top_k)
 
-# You cannot use async keyword when function that streams data for StreamingResponse have blocking functions (example: time.sleep)
-def stream_rag_response(
-    db: Session, chest_id: int, question: str
-) -> AsyncGenerator[str, None]:
-    """Stream RAG response as SSE events"""
-    chunks_collected = []
+    if not relevant_chunks:
+        system_msg = "I couldn't find any relevant information to answer your question."
+        if config.STREAMING:
+            chunks_collected.append(system_msg)
+        return system_msg, None
 
+    # Separate chunks and metadata
+    # print("RELEVANT CHUNKSSS: ", relevant_chunks)
+    chunk_texts = relevant_chunks[0][0]
+    chunk_metadata = relevant_chunks[0][1]
+    # print("TEXTS CHUNKSSS: ", chunk_texts)
+    # print("METADATA CHUNKSSS: ", chunk_metadata)
+
+    # 4.4 Filter by enabled sources
+    enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+
+    if not enabled_ids:
+        system_msg = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
+        if config.STREAMING:
+            chunks_collected.append(system_msg)
+        return system_msg, None
+
+    # Get the actual chunk texts for filtered metadata
+    # We need to match metadata to get the correct chunk texts
+    # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
+    filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids]
+
+    return [x for i, x in enumerate(chunk_texts) if i in filtered_chunks], enabled_ids
+    """
+    filtered_chunks = []
+    for meta in enabled_ids:
+        # Find the corresponding chunk text
+        for i, (chunk_text, chunk_meta) in enumerate(relevant_chunks):
+            if chunk_meta == meta:
+                filtered_chunks.append(chunk_text)
+                break
+            """
+
+def format_sse_event(data: str) -> str:
+    """Format data as SSE event"""
+    return f"data: {data}[ENDLINE]"
+
+
+def format_sse_done() -> str:
+    """Format SSE done event"""
+    return "data: [DONE][ENDLINE]"
+
+
+def store_full_response(
+    db: Session, chest_id: int, content: str, sources_used: List[int]
+) -> None:
+    """Store full assistant response in database"""
     try:
-        relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=5)
+        from src.backend.models.chat_message import ChatMessage as DBChatMessage
+        from src.backend.models.schemas import ChatMessageCreate
+        pdb.set_trace()
+        assistant_message = ChatMessageCreate(
+            role="ASSISTANT",
+            content=content,
+            sources_used=sources_used,
+            chest_id=chest_id,
+        )
 
-        if not relevant_chunks:
-            error_chunk = (
-                "I couldn't find any relevant information to answer your question."
-            )
-            yield format_sse_event(error_chunk)
-            chunks_collected.append(error_chunk)
-            return
+        db_chat_message = DBChatMessage(**assistant_message.dict())
+        db.add(db_chat_message)
+        db.commit()
+        db.refresh(db_chat_message)
+        logger.info(f"Stored streamed response for chest {chest_id}")
+    except Exception as e:
+        logger.error(f"Error storing streamed response: {e}")
 
-        chunk_texts = relevant_chunks[0][0]
-        chunk_metadata = relevant_chunks[0][1]
 
-        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+async def rag_answer_async_generator(question: str, context_chunks: List[str], chunks_collected: List[str] = []) -> str:
+    """Generate answer using LLM with retrieved context"""
+#    if not context_chunks:
+        # No context available, answer based on general knowledge
+#        prompt = f"""Question: {question}
 
-        if not enabled_ids:
-            error_chunk = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
-            yield format_sse_event(error_chunk)
-            chunks_collected.append(error_chunk)
-            return
-
-        filtered_chunks = [
-            i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids
-        ]
-        chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
-
-        context = "\n\n".join(chunk_texts)
-        prompt = f"""---------------------
-{context}
----------------------
-Given the above context information and not prior knowledge, answer the question using Markdown syntax. Cite context fragments using the structure: "(source: )" to support your answer.
-Q: {question}
-A:"""
-        full_response = ""
-        if not config.MOCK_MODE:
-            output = llm(
-                prompt,
-                max_tokens=config.MAX_TOKENS,
-                # suffix="Sure! ",
-                stream=config.STREAMING,
-            )
-            print("PREPARING FOR INFERENCE")
-            for item in output:
-                text = item["choices"][0]["text"]
-                if text:
-                    full_response += text
-                    chunks_collected.append(text)
-                    print(f"[{time.time()}] YIELDING CHUNK: {text}")
-                    yield format_sse_event(text)
-        else:
-            chunk_list = [
+#Answer the question based on your general knowledge. If you don't know the answer, say so."""
+#    else:
+        # Combine context chunks
+    context = "\n\n".join(context_chunks)
+    prompt = f"""Context information is below.
+            ---------------------
+            {context}
+            ---------------------
+            Given the context information and not prior knowledge, answer the question.
+            Q: {question}
+            A:"""
+    #print("USER PROMPT: ", prompt)
+    if not config.MOCK_MODE:
+        output = llm(
+            prompt,  # Prompt
+            max_tokens=config.MAX_TOKENS,  # 32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
+            stream=True,  # Returns a generator object
+        )  # Generate a completion, can also call create_completion
+        print("PREPARING FOR INFERENCE")
+        for item in output:
+            text = item["choices"][0]["text"]
+            if text:
+                chunks_collected.append(text)
+                print(f"[{time.time()}] YIELDING CHUNK: {text}")
+                yield format_sse_event(text)
+    else:
+        output = [
                 "Hey! ",
                 "This ",
                 "is ",
@@ -213,86 +266,40 @@ A:"""
                 "fabricar ",
                 "**máquinas**",
             ]
-            for chunk in chunk_list:
-                # print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
-                time.sleep(0.1)
-                yield format_sse_event(chunk)
 
-        print("Proceeding to message store")
-        store_full_response(db, chest_id, full_response, enabled_ids)
-
-    except Exception as e:
-        logger.error(f"Error in streaming RAG response: {e}")
-        error_chunk = "Sorry, I encountered an error while processing your question."
-        yield format_sse_event(error_chunk)
-        chunks_collected.append(error_chunk)
+    for chunk in output:
+        # print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
+        await asyncio.sleep(0.1)
+        yield format_sse_event(chunk)
 
     yield format_sse_done()
 
-
-def format_sse_event(data: str) -> str:
-    """Format data as SSE event"""
-    return f"data: {data}[ENDLINE]"
-
-
-def format_sse_done() -> str:
-    """Format SSE done event"""
-    return "data: [DONE][ENDLINE]"
-
-
-def store_full_response(
-    db: Session, chest_id: int, content: str, sources_used: List[int]
-) -> None:
-    """Store full assistant response in database"""
-    try:
-        from src.backend.models.chat_message import ChatMessage as DBChatMessage
-        from src.backend.models.schemas import ChatMessageCreate
-
-        assistant_message = ChatMessageCreate(
-            role="ASSISTANT",
-            content=content,
-            sources_used=sources_used,
-            chest_id=chest_id,
-        )
-
-        db_chat_message = DBChatMessage(**assistant_message.dict())
-        db.add(db_chat_message)
-        db.commit()
-        db.refresh(db_chat_message)
-        logger.info(f"Stored streamed response for chest {chest_id}")
-    except Exception as e:
-        logger.error(f"Error storing streamed response: {e}")
-
-
-def generate_rag_answer(question: str, context_chunks: List[str]) -> str:
+def rag_answer_generator(question: str, context_chunks: List[str]) -> str:
     """Generate answer using LLM with retrieved context"""
-    if not context_chunks:
+#    if not context_chunks:
         # No context available, answer based on general knowledge
-        prompt = f"""Question: {question}
+#        prompt = f"""Question: {question}
 
-Answer the question based on your general knowledge. If you don't know the answer, say so."""
-    else:
+#Answer the question based on your general knowledge. If you don't know the answer, say so."""
+#    else:
         # Combine context chunks
-        context = "\n\n".join(context_chunks)
-        prompt = f"""Context information is below.
+    context = "\n\n".join(context_chunks)
+    prompt = f"""Context information is below.
 ---------------------
 {context}
 ---------------------
 Given the context information and not prior knowledge, answer the question.
 Q: {question}
 A:"""
-        print("USER PROMPT: ", prompt)
-        if not config.MOCK_MODE:
-            output = llm(
-                prompt,  # Prompt
-                max_tokens=0,  # 32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
-                # stop=["Q:", "\n"], # Stop generating just before the model would generate a new question
-                # echo=True, # Echo the prompt back in the output,
-                suffix="Sure! ",
-                stream=False,  # Returns a generator object
-            )  # Generate a completion, can also call create_completion
-        else:
-            output = "Hey! This is a prebuilt response"
+    #print("USER PROMPT: ", prompt)
+    if not config.MOCK_MODE:
+        output = llm(
+            prompt,  # Prompt
+            max_tokens=config.MAX_TOKENS,  # 32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
+            stream=False,  # Returns a generator object
+        )  # Generate a completion, can also call create_completion
+    else:
+        output = "Hey! This is a prebuilt response" 
     # This would be an async call in practice
     # For now, we'll return a placeholder
     # for item in output:
@@ -301,56 +308,20 @@ A:"""
     return output  # f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
 
 
-async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
+def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
     """Process a complete RAG query"""
     try:
-        # 4.1 Compute question embeddings (handled in retrieve_relevant_chunks)
-        # 4.2 Vector search
-        # 4.3 Retrieve Top-K chunks
-        relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=5)
-
-        if not relevant_chunks:
-            return {
-                "answer": "I couldn't find any relevant information to answer your question.",
-                "sources_used": [],
-            }
-
-        # Separate chunks and metadata
-        # print("RELEVANT CHUNKSSS: ", relevant_chunks)
-        chunk_texts = relevant_chunks[0][0]
-        chunk_metadata = relevant_chunks[0][1]
-        # print("TEXTS CHUNKSSS: ", chunk_texts)
-        # print("METADATA CHUNKSSS: ", chunk_metadata)
-
-        # 4.4 Filter by enabled sources
-        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
-
-        if not enabled_ids:
-            return {
-                "answer": "I found some information, but it's from disabled sources. Please enable some sources to get an answer.",
-                "sources_used": [],
-            }
-
-        # Get the actual chunk texts for filtered metadata
-        # We need to match metadata to get the correct chunk texts
-        # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
-        filtered_chunks = [
-            i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids
-        ]
-        chunk_texts = [x for i, x in enumerate(chunk_texts) if i in filtered_chunks]
-        """
-        filtered_chunks = []
-        for meta in enabled_ids:
-            # Find the corresponding chunk text
-            for i, (chunk_text, chunk_meta) in enumerate(relevant_chunks):
-                if chunk_meta == meta:
-                    filtered_chunks.append(chunk_text)
-                    break
-        """
 
         # 4.5 Use plain chunks with user query for LLM answer
-        response = generate_rag_answer(question, chunk_texts)
+        chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
+        if enabled_ids is None:
+            # Not relevant chunks found neither active sources
+            return {"answer": chunk_text, "sources_used": []}
+        response = rag_answer_generator(question, chunk_text)
+        #print("TESTO: ", str(response))
         answer = {"answer": response["choices"][0]["text"], "sources_used": enabled_ids}
+        print("Proceeding to message store")
+        store_full_response(db, chest_id, answer, enabled_ids)
         # print("RESPUU: ", answer)
 
         # Extract source IDs used
@@ -364,3 +335,30 @@ async def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
             "answer": "Sorry, I encountered an error while processing your question.",
             "sources_used": [],
         }
+
+# You cannot use async keyword when function that streams data for StreamingResponse have blocking functions (example: time.sleep)
+async def stream_rag_response(
+    db: Session, chest_id: int, question: str
+) -> AsyncGenerator[str, None]:
+    """Stream RAG response as SSE events"""
+    
+    try:
+        # List to store all yielded chunks when streaming for latter storage
+        chunks_collected = []
+        context_chunks, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=chunks_collected)
+        if enabled_ids is None:
+            # Not relevant chunks found neither active sources
+            yield format_sse_event(context_chunks)
+            return
+        async for chunk in rag_answer_async_generator(question, context_chunks, chunks_collected=chunks_collected):
+            yield chunk
+        #print("Proceeding to message store")
+        # TODO: we'll deactivate this for the moment
+        #system_answer = " ".join(chunks_collected)
+        #store_full_response(db, chest_id, system_answer, enabled_ids)
+        
+    except Exception as e:
+        logger.error(f"Error in streaming RAG response: {e}")
+        error_chunk = "Sorry, I encountered an error while processing your question."
+        yield format_sse_event(error_chunk)
+        #TODO: on the future this line may be needed; chunks_collected.append(error_chunk)

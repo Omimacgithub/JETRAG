@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     # TODO: Enables model thinking
     ENABLE_THINKING: bool = False
 
-    # Print to stdout inference tokens as they are generated
-    STREAMING: bool = True
+    # Return inference tokens as they are generated
+    STREAMING: bool = False
 
     # Max tokens for model context (None if max token context)
     MAX_TOKENS: int = 4096  # 16384 #8192 #6144 #4096
