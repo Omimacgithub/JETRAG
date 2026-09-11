@@ -1,10 +1,10 @@
 name: Build and Test App
 
 on:
-#  push:
-#    branches: [ "master" ]
-  pull_request:
+  push:
     branches: [ "master" ]
+#  pull_request:
+#    branches: [ "master" ]
 
 env:
   REGISTRY: ghcr.io
