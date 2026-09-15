@@ -22,8 +22,8 @@ def read_sources(
 @router.post("/", response_model=Source, status_code=status.HTTP_201_CREATED)
 def create_source(source: SourceCreate, db: Session = Depends(get_db)):
     # Verify chest exists
-    # In a real app, we'd check the chest exists here
-    return source_service.create_source(db=db, source=source)
+    # TODO: we'd check the chest exists here
+    return source_service.create_source(source=source, db=db)
 
 
 @router.get("/{source_id}", response_model=Source)

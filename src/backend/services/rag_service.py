@@ -34,7 +34,7 @@ print(
 
 
 def retrieve_relevant_chunks(
-    db: Session, chest_id: int, question: str, top_k: int = config.TOP_K
+    chest_id: int, question: str, top_k: int = config.TOP_K
 ) -> List[Tuple[str, dict]]:
     """Retrieve relevant chunks for a question from a chest's sources"""
     try:
@@ -60,7 +60,10 @@ def retrieve_relevant_chunks(
             "metadatas"
         ]  # results.get("metadatas", [[]])[0] if results.get("metadatas") else []
 
+        #print("Documents: " + str(documents) + ", Metadatas: " + str(metadatas))
         # Combine documents with their metadata
+        if documents == [[]] or metadatas == [[]]:
+            return [] 
         relevant_chunks = list(zip(documents, metadatas))
 
         return relevant_chunks
@@ -114,8 +117,8 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # 4.1 Compute question embeddings (handled in retrieve_relevant_chunks)
     # 4.2 Vector search
     # 4.3 Retrieve Top-K chunks
-    relevant_chunks = retrieve_relevant_chunks(db, chest_id, question, top_k=top_k)
-
+    relevant_chunks = retrieve_relevant_chunks(chest_id, question, top_k=top_k)
+    print("THE RELEVANT: "+ str(relevant_chunks))
     if not relevant_chunks:
         system_msg = "I couldn't find any relevant information to answer your question."
         if config.STREAMING:
@@ -129,21 +132,25 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # print("TEXTS CHUNKSSS: ", chunk_texts)
     # print("METADATA CHUNKSSS: ", chunk_metadata)
 
-    # 4.4 Filter by enabled sources
-    enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+    #When evaluating RAG system, we always want all sources enabled
+    if not config.EVAL_MODE:
+        # 4.4 Filter by enabled sources
+        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
 
-    if not enabled_ids:
-        system_msg = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
-        if config.STREAMING:
-            chunks_collected.append(system_msg)
-        return system_msg, None
+        if not enabled_ids:
+            system_msg = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
+            if config.STREAMING:
+                chunks_collected.append(system_msg)
+            return system_msg, None
 
-    # Get the actual chunk texts for filtered metadata
-    # We need to match metadata to get the correct chunk texts
-    # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
-    filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids]
+        # Get the actual chunk texts for filtered metadata
+        # We need to match metadata to get the correct chunk texts
+        # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
+        filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids]
 
-    return [x for i, x in enumerate(chunk_texts) if i in filtered_chunks], enabled_ids
+        return [x for i, x in enumerate(chunk_texts) if i in filtered_chunks], enabled_ids
+    else:
+        return chunk_texts, chunk_metadata
     """
     filtered_chunks = []
     for meta in enabled_ids:
@@ -171,7 +178,6 @@ def store_full_response(
     try:
         from src.backend.models.chat_message import ChatMessage as DBChatMessage
         from src.backend.models.schemas import ChatMessageCreate
-        pdb.set_trace()
         assistant_message = ChatMessageCreate(
             role="ASSISTANT",
             content=content,
@@ -308,26 +314,34 @@ A:"""
     return output  # f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
 
 
-def process_rag_query(db: Session, chest_id: int, question: str) -> dict:
+def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
     """Process a complete RAG query"""
     try:
-
         # 4.5 Use plain chunks with user query for LLM answer
-        chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
+        enabled_ids = None
+        chunk_metadata = None
+        if not config.EVAL_MODE:
+            chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
+        else: 
+            chunk_text, chunk_metadata = get_and_filter_chunks(db, chest_id, question, top_k=5)
         if enabled_ids is None:
             # Not relevant chunks found neither active sources
             return {"answer": chunk_text, "sources_used": []}
         response = rag_answer_generator(question, chunk_text)
         #print("TESTO: ", str(response))
-        answer = {"answer": response["choices"][0]["text"], "sources_used": enabled_ids}
-        print("Proceeding to message store")
-        store_full_response(db, chest_id, answer, enabled_ids)
-        # print("RESPUU: ", answer)
+        if not config.EVAL_MODE:
+            answer = {"answer": response["choices"][0]["text"], "sources_used": enabled_ids}
+                    
+            print("Proceeding to message store")
+            store_full_response(db, chest_id, answer["answer"], enabled_ids)
+            # print("RESPUU: ", answer)
 
-        # Extract source IDs used
-        # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
+            # Extract source IDs used
+            # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
 
-        return answer
+            return answer
+        else:
+            return {"answer": response["choices"][0]["text"], "retrieved_documents": chunk_metadata}
 
     except Exception as e:
         logger.error(f"Error processing RAG query: {e}")

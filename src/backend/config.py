@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # Embeddings model path
     EMBEDDINGS_MODEL_PATH: str = (
         HF_MODELS_PATH
-        + "models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/"
+        + "models--sentence-transformers--all-MiniLM-L6-v2/snapshots/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/"
     )
 
     # --------------------
@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     # Flag to not load LLM model (for frontend debugging).
     MOCK_MODE: bool = False
+
+    # Adapt RAG system to evalute using RAGAS (example: set all sources to enabled automatically)
+    EVAL_MODE: bool = False
 
     # ------------------------------------------------------
     # --- LLM SETTINGS (used on services/rag_service.py) ---

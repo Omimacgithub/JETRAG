@@ -78,7 +78,7 @@ async def process_chat_query(
         )
 
     # Non streaming way
-    response = rag_service.process_rag_query(db, rag_query.chest_id, rag_query.question)
+    response = rag_service.process_rag_query(rag_query.chest_id, rag_query.question, db)
 
     assistant_message = ChatMessageCreate(
         role="ASSISTANT",

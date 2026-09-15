@@ -12,7 +12,7 @@
 - [Local Development Setup](#local-development-setup)
   - [Backend (FastAPI)](#backend-fastapi)
   - [Frontend (SvelteKit)](#frontend-sveltekit)
-- [How to run it?](#how-to-run-it)
+- [How well RAG is performing?](#how-well-rag-is-performing)
 - [Docker Deployment](#docker-deployment)
   - [Prerequisites](#prerequisites)
   - [Deployment Steps](#deployment-steps)
@@ -36,7 +36,10 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [x] Sources filtering by enabling checkboxes on frontend
 - [x] Persitent conversations during a web session (use of localStorage)
 - [x] Streaming LLM responses
-- [ ] (Not tested yet) Docker deployment
+- [x] Docker deployment
+- [ ] (TODO:) Sources are created without matter if the chest exist
+- [ ] Discuss if source_id should be an unique identifier or should be attached to the source 
+- [ ] RAG pipeline evaluation system (RAGAS)
 - [ ] Proper text rendering (tables aren't displayed correctly)
 - [ ] Source processing from URL
 - [ ] Source processing from file
@@ -264,6 +267,18 @@ PROJECT_NAME=JETRAG
 - State management using Svelte stores
 - Styling with TailwindCSS (via CDN)
 - Component-based architecture
+
+## How well RAG is performing?
+
+I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-judge evaluation framework, to provide measurable metrics of performance (example: precission).
+
+To start the evaluation, run the following script:
+
+~~~bash
+(source venv)
+cd src/backend/rag_evaluation
+python3 experiment.py
+~~~
 
 ## Troubleshooting
 

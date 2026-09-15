@@ -16,8 +16,9 @@ from src.backend.config import config
 from chromadb.utils import embedding_functions
 
 embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-    device="cuda"
-)  # model_name=config.EMBEDDINGS_MODEL_PATH, )
+    device="cuda",
+    model_name=config.EMBEDDINGS_MODEL_PATH, 
+)
 
 """
 class SentenceTransformerEmbeddingFunction:
@@ -54,7 +55,7 @@ def get_sources_by_chest(db: Session, chest_id: int, skip: int = 0, limit: int =
     )
 
 
-def create_source(db: Session, source: SourceCreate):
+def create_source(source: SourceCreate, db: Session=None):
     # Generate content hash to avoid re-processing
     content_hash = None
     if source.content:
@@ -68,12 +69,13 @@ def create_source(db: Session, source: SourceCreate):
         content_hash=content_hash,
         is_enabled=source.is_enabled,
     )
-    db.add(db_source)
-    db.commit()
-    db.refresh(db_source)
+    if not config.EVAL_MODE:
+        db.add(db_source)
+        db.commit()
+        db.refresh(db_source)
 
     # Process the source (chunking, embeddings, storage)
-    process_source(db_source, db)
+    process_source(db_source)
 
     return db_source
 
@@ -111,6 +113,7 @@ def delete_source(db: Session, source_id: int):
                 collection_name=f"chest_{db_source.chest_id}",
             )
             # Delete using source ID as part of the document ID
+            #TODO: id for deletion "source_{source_id}" does not match id used for addition source_{source_id}_chunk{i}
             delete_from_collection(collection, [f"source_{source_id}"])
         except Exception as e:
             logger.warning(f"Could not remove embeddings for source {source_id}: {e}")
@@ -120,7 +123,7 @@ def delete_source(db: Session, source_id: int):
     return db_source
 
 
-def process_source(source: Source, db: Session):
+def process_source(source: Source):
     """Process a source: parse, chunk, compute embeddings, store"""
     try:
         # Skip processing if no content or if it's a URL (handled separately)
@@ -162,13 +165,6 @@ def process_source(source: Source, db: Session):
         add_to_collection(collection, documents, metadatas, ids)
 
         logger.info(f"Processed source {source.id}: {len(chunks)} chunks stored")
-        texto = "This is a query about carabirubi, carabiruba, yo no se"
-        results = collection.query(
-            query_texts=[texto],  # Chroma will embed this for you
-            n_results=1,  # how many results to return
-        )
-
-        # print("THA BEST RESULT TO: " + str(results) + " ; " + texto)
 
     except Exception as e:
         logger.error(f"Error processing source {source.id}: {e}")
