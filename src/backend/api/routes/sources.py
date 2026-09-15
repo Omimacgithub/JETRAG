@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from src.backend.core.database import get_db
 from src.backend.models.schemas import Source, SourceCreate, SourceUpdate
-from src.backend.services import source_service
+from src.backend.services import chest_service, source_service
 
 router = APIRouter()
 
@@ -21,8 +21,8 @@ def read_sources(
 
 @router.post("/", response_model=Source, status_code=status.HTTP_201_CREATED)
 def create_source(source: SourceCreate, db: Session = Depends(get_db)):
-    # Verify chest exists
-    # TODO: we'd check the chest exists here
+    if chest_service.get_chest(db, chest_id=source.chest_id) is None:
+        raise HTTPException(status_code=404, detail="Chest not found")
     return source_service.create_source(source=source, db=db)
 
 

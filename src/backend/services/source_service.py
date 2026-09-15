@@ -112,9 +112,11 @@ def delete_source(db: Session, source_id: int):
                 embedding_function=embedding_function,
                 collection_name=f"chest_{db_source.chest_id}",
             )
-            # Delete using source ID as part of the document ID
-            #TODO: id for deletion "source_{source_id}" does not match id used for addition source_{source_id}_chunk{i}
-            delete_from_collection(collection, [f"source_{source_id}"])
+            # Delete every chunk stored for this source, regardless of chunk count
+            stored = collection.get(where={"source_id": source_id})
+            chunk_ids = stored.get("ids") or []
+            if chunk_ids:
+                delete_from_collection(collection, chunk_ids)
         except Exception as e:
             logger.warning(f"Could not remove embeddings for source {source_id}: {e}")
 

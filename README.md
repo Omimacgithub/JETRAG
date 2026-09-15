@@ -37,7 +37,8 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [x] Persitent conversations during a web session (use of localStorage)
 - [x] Streaming LLM responses
 - [x] Docker deployment
-- [ ] (TODO:) Sources are created without matter if the chest exist
+- [x] Fixed: Sources are created without matter if the chest exist
+- [x] Fixed: Sources are not being properly deleted because missing chunk ids on deletion.
 - [ ] Discuss if source_id should be an unique identifier or should be attached to the source 
 - [ ] RAG pipeline evaluation system (RAGAS)
 - [ ] Proper text rendering (tables aren't displayed correctly)
