@@ -41,7 +41,7 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [x] Fixed: Sources are not being properly deleted because missing chunk ids on deletion.
 - [x] Created OpenAI client for inference with API LLMs (**only available in non-streaming mode**)
 - [ ] Discuss if source_id should be an unique identifier or should be attached to the source 
-- [ ] (**non-streaming mode**) RAG pipeline evaluation system (RAGAS)
+- [x] (**non-streaming mode**) implemented RAG pipeline evaluation system (RAGAS)
 - [ ] Proper text rendering (tables aren't displayed correctly)
 - [ ] Source processing from URL
 - [ ] Source processing from file
@@ -272,18 +272,25 @@ PROJECT_NAME=JETRAG
 
 ## How well RAG is performing?
 
-I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-judge evaluation framework, to provide measurable metrics of performance (example: precission).
+I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-judge evaluation framework, to provide measurable metrics of performance (example: faithfullness).
 
-Run the llama web server (local):
+Start llama web server (local):
 ~~~bash
+(source venv)
 python3 -m llama_cpp.server --n_gpu_layers 37 --model /home/omi/.cache/huggingface/hub/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
+uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
+~~~
+
+Start backend:
+~~~bash
+uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
 ~~~
 
 To start the evaluation, run the following script on the root project dir:
 
 ~~~bash
 (source venv)
-python3 -m src.backend.rag_evaluation.experiment
+python3 -m src.backend.rag_evaluation.run_experiment
 ~~~
 
 ## Troubleshooting

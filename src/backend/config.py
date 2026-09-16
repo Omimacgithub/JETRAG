@@ -87,6 +87,15 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
     PROJECT_NAME: str = "JETRAG"
 
+    # ---------------------------------------------------------
+    # --- RAG EVALUATION SETTINGS (used by rag_evaluation/* ) ---
+    # ---------------------------------------------------------
+
+    # REST endpoint of the running JETRAG backend, used by the evaluation
+    # pipeline to feed documents (sources API) and query the RAG system
+    # (chat API) over HTTP.
+    BACKEND_API_URL: str = "http://localhost:8000"
+
     class Config:
         case_sensitive = True
         env_file = ".env"

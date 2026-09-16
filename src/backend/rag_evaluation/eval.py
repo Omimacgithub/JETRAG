@@ -2,10 +2,13 @@
 # Followed the tutorial https://docs.ragas.io/en/stable/tutorials/rag/
 import asyncio
 from typing import Dict, Any
+import httpx
+
 from ragas import experiment
 
+from src.backend.config import config
+
 from ragas.metrics import DiscreteMetric
-from src.backend.services.rag_service import process_rag_query
 
 # Define correctness metric
 correctness_metric = DiscreteMetric(
@@ -31,7 +34,7 @@ allowed_values=["pass", "fail"],
 )
 
 @experiment()
-async def evaluate_rag(row: Dict[str, Any], llm) -> Dict[str, Any]:
+async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any]:
     """
     Run RAG evaluation on a single row.
 
@@ -39,19 +42,22 @@ async def evaluate_rag(row: Dict[str, Any], llm) -> Dict[str, Any]:
         row: Dictionary containing question and expected_answer
         rag: Pre-initialized RAG instance
         llm: Pre-initialized LLM client for evaluation
+        chest_id: Identifier of the chest holding the sources used to answer
 
     Returns:
         Dictionary with evaluation results
     """
     question = row["question"]
 
-    # Query the RAG system
-    #TODO: evaluate_rag method wants in summary:
-        # - answer field response
-        # - retrieved documents (chunk_metadata field from process_rag_query)
-
-    rag_response = process_rag_query(0, question)#await rag.query(question, top_k=4)
-    #model_response = # TODO: output here an string with retrieved chunks # rag_response.get("answer", "")
+    # Query the RAG system by calling the backend chat API endpoint
+    payload = {"question": question, "chest_id": chest_id, "stream": False}
+    async with httpx.AsyncClient(
+        base_url=config.BACKEND_API_URL.rstrip("/"),
+        timeout=httpx.Timeout(300.0),
+    ) as http_client:
+        chat_response = await http_client.post("/api/chat/", json=payload)
+        chat_response.raise_for_status()
+        rag_response = chat_response.json()
 
     # Evaluate correctness asynchronously
     score = await correctness_metric.ascore(
