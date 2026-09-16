@@ -273,6 +273,11 @@ PROJECT_NAME=JETRAG
 
 I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-judge evaluation framework, to provide measurable metrics of performance (example: precission).
 
+Run the llama web server (local):
+~~~bash
+python3 -m llama_cpp.server --n_gpu_layers -1 --model /home/omi/.cache/huggingface/hub/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
+~~~
+
 To start the evaluation, run the following script on the root project dir:
 
 ~~~bash

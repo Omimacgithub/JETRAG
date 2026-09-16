@@ -11,7 +11,7 @@ from llama_cpp import Llama
 
 logger = logging.getLogger(__name__)
 
-if not config.MOCK_MODE:
+if not config.MOCK_MODE and not config.USE_LLAMA_SERVER:
     llm = Llama(
         model_path=config.GGUF_MODEL,
         n_ctx=config.MAX_TOKENS,
@@ -296,6 +296,54 @@ Given the context information and not prior knowledge, answer the question.
 Q: {question}
 A:"""
     #print("USER PROMPT: ", prompt)
+    # --- llama.cpp web server inference path ---
+    # When enabled, send the prompt to a localhosted llama.cpp server instead of
+    # using the in-process Llama object. The response is normalized to the same
+    # shape returned by llama_cpp.Llama ({"choices": [{"text": ...}]}) so callers
+    # like process_rag_query keep working unchanged.
+    if config.USE_LLAMA_SERVER:
+        import httpx
+
+        if not config.LLAMA_SERVER_URL:
+            logger.error("USE_LLAMA_SERVER is True but LLAMA_SERVER_URL is empty")
+            return {"choices": [{"text": "Sorry, the inference server URL is not configured."}]}
+
+        payload = {
+            "prompt": prompt,
+            "n_predict": config.MAX_TOKENS,
+            "stream": False,
+            "temperature": 0.8,
+        }
+        try:
+            with httpx.Client(timeout=httpx.Timeout(300.0, connect=10.0)) as client:
+                resp = client.post(
+                    f"{config.LLAMA_SERVER_URL.rstrip('/')}/completion",
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"llama.cpp server HTTP error: {e.response.status_code} - {e.response.text}"
+            )
+            return {
+                "choices": [
+                    {"text": "Sorry, the inference server returned an error while generating an answer."}
+                ]
+            }
+        except (httpx.RequestError, ValueError) as e:
+            logger.error(f"Error contacting llama.cpp server: {e}")
+            return {
+                "choices": [
+                    {"text": "Sorry, I could not reach the inference server."}
+                ]
+            }
+
+        content = data.get("content", "")
+        if not isinstance(content, str):
+            content = str(content)
+        return {"choices": [{"text": content}]}
+
     if not config.MOCK_MODE:
         output = llm(
             prompt,  # Prompt

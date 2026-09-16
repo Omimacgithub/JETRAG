@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     # Saves memory with no performance impact
     FLASH_ATTN: bool = True
 
+    # When True, rag_answer_generator sends inference requests to a localhosted
+    # llama.cpp web server (LLAMA_SERVER_URL) instead of using the in-process
+    # Llama object. No API key is required for the local server.
+    USE_LLAMA_SERVER: bool = True
+    LLAMA_SERVER_URL: str = "http://localhost:8080"
+
     # API
     API_V1_STR: str = "/api"
     PROJECT_NAME: str = "JETRAG"
