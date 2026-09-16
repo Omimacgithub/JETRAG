@@ -68,6 +68,7 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         # without a running backend server. The call is blocking (vector search
         # + LLM inference), so it runs in a worker thread to keep ragas' event
         # loop responsive.
+        '''
         db_generator = get_db()
         db = next(db_generator)
         try:
@@ -79,12 +80,14 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
             )
             db.add(DBChatMessage(**user_message.dict()))
             db.commit()
-
-            rag_response = await asyncio.to_thread(
-                rag_service.process_rag_query, chest_id, question, db
-            )
+        '''
+        rag_response = await asyncio.to_thread(
+            rag_service.process_rag_query, chest_id, question, #db
+        )
+        '''
         finally:
             db_generator.close()
+        '''
 
     # Evaluate correctness asynchronously
     score = await correctness_metric.ascore(

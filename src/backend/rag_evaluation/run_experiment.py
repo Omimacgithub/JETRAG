@@ -1,5 +1,12 @@
+import csv
+import sys
+
+#Va a petar
+csv.field_size_limit(sys.maxsize)
+
 from datetime import datetime
-from typing import List
+from pathlib import Path
+from typing import Dict, List
 
 import asyncio
 import httpx
@@ -18,21 +25,26 @@ from src.backend.services.source_service import (
     delete_source,
     get_sources_by_chest,
 )
+from dotenv import load_dotenv
+import os
+
+load_dotenv(dotenv_path=config.ENV_FILE)
+#print("ENV_FILE: " + config.ENV_FILE)
+#print("key: " + os.getenv("ALIBABA_API_KEY"))
 
 # OpenAI-compatible endpoint exposed by the local llama.cpp server hosting the LLM
-LLM_BASE_URL = config.LLAMA_SERVER_URL.rstrip("/") + "/v1/"
-LLM_MODEL = "gemma4"
-API_KEY = "not-needed"
+#LLM_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" #config.LLAMA_SERVER_URL.rstrip("/") + "/v1/"
+key =  os.getenv("ALIBABA_API_KEY") #"not-needed"
 
 # Name of the chest used to group every document uploaded during evaluation
 CHEST_NAME = "ragas_evaluation"
 
 # Code for providing Gemma4 local model as OpenAI API compatible server for RAGAS
-client = AsyncOpenAI(base_url=LLM_BASE_URL, api_key=API_KEY)
-llm = llm_factory(LLM_MODEL, client=client)
+client = AsyncOpenAI(base_url=config.OPENAI_SERVER_URL, api_key=key if key else "useless-key", default_headers={"X-DashScope-Async": "disable"})
+llm = llm_factory(config.MODEL_NAME, client=client)
 
 
-def setup_evaluation_chest(documents: List[str]) -> int:
+def setup_evaluation_chest(documents: List[Dict[str, str]]) -> int:
     """Upload documents to the backend sources API so that their chunks and
     embeddings get persisted into the Chroma vector database.
 
@@ -46,7 +58,6 @@ def setup_evaluation_chest(documents: List[str]) -> int:
     if config.USE_BACKEND:
         backend_url = config.BACKEND_API_URL.rstrip("/")
         with httpx.Client(base_url=backend_url, timeout=httpx.Timeout(120.0)) as http_client:
-            # Reuse the evaluation chest if it already exists, create it otherwise.
             chests = http_client.get("/api/chests/")
             chests.raise_for_status()
             chest_id = next(
@@ -58,33 +69,26 @@ def setup_evaluation_chest(documents: List[str]) -> int:
                 created_chest.raise_for_status()
                 chest_id = created_chest.json()["id"]
 
-            # Clear sources loaded on previous runs to keep the vector store clean.
             sources = http_client.get("/api/sources/", params={"chest_id": chest_id})
             sources.raise_for_status()
             for source in sources.json():
                 deleted = http_client.delete(f"/api/sources/{source['id']}")
                 deleted.raise_for_status()
 
-            # Store every document as a source through the sources API.
-            for index, document in enumerate(documents):
+            for document in documents:
                 source = SourceCreate(
-                    name=f"eval_source_{index}",
+                    name=document["source"],
                     type="TXT",
-                    content=document,
+                    content=document["text"],
                     is_enabled=True,
                     chest_id=chest_id,
                 )
                 created_source = http_client.post("/api/sources/", json=source.model_dump())
                 created_source.raise_for_status()
     else:
-        # In-process path: replicate what the chests/sources API routes do by
-        # calling the same services directly, without a running backend server.
-        # get_db is a generator-based dependency, so the session lifecycle is
-        # managed manually here.
         db_generator = get_db()
         db = next(db_generator)
         try:
-            # Reuse the evaluation chest if it already exists, create it otherwise.
             chest = next(
                 (chest for chest in get_chests(db) if chest.name == CHEST_NAME),
                 None,
@@ -93,18 +97,15 @@ def setup_evaluation_chest(documents: List[str]) -> int:
                 chest = create_chest(db, ChestCreate(name=CHEST_NAME))
             chest_id = chest.id
 
-            # Clear sources loaded on previous runs to keep the vector store clean.
             for source in get_sources_by_chest(db, chest_id):
                 delete_source(db, source.id)
 
-            # Store every document as a source (chunking + embeddings happen
-            # inside create_source -> process_source, same as the API route).
-            for index, document in enumerate(documents):
+            for document in documents:
                 create_source(
                     SourceCreate(
-                        name=f"eval_source_{index}",
+                        name=document["source"],
                         type="TXT",
-                        content=document,
+                        content=document["text"],
                         is_enabled=True,
                         chest_id=chest_id,
                     ),
@@ -116,23 +117,26 @@ def setup_evaluation_chest(documents: List[str]) -> int:
     return chest_id
 
 
+def load_documents() -> List[Dict[str, str]]:
+    csv_path = Path(__file__).parent / "documents" / "huggingface_doc.csv"
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        return [{"text": row["text"], "source": row["source"]} for row in reader]
+
+
 def run_evaluation():
-    # Download and prepare dataset
-    # dataset_path = download_and_save_dataset()
-    dataset = create_ragas_dataset()  # dataset_path)
-    documents = [
-        "Albert Einstein proposed the theory of relativity, which transformed our understanding of time, space, and gravity.",
-        "Marie Curie was a physicist and chemist who conducted pioneering research on radioactivity and won two Nobel Prizes.",
-        "Isaac Newton formulated the laws of motion and universal gravitation, laying the foundation for classical mechanics.",
-        "Charles Darwin introduced the theory of evolution by natural selection in his book 'On the Origin of Species'.",
-        "Ada Lovelace is regarded as the first computer programmer for her work on Charles Babbage's early mechanical computer, the Analytical Engine.",
-    ]
+    print("Creating dataset, please wait...")
+    dataset = create_ragas_dataset()
+    print("Loading document, please wait...")
+    documents = load_documents()
 
     # Store documents into ChromaDB through the sources API before evaluating
+    print("Store documents into ChromaDB through the sources API before evaluating, please wait...")
     chest_id = setup_evaluation_chest(documents)
 
     # Run evaluation experiment
     exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_naiverag"
+    print("Run evaluation, please wait...")
     results = asyncio.run(
         evaluate_rag.arun(dataset, name=exp_name, llm=llm, chest_id=chest_id)
     )

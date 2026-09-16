@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings
 
 import os
 
+from pathlib import Path
+
 class Settings(BaseSettings):
     # Path of models downloaded from huggingface hub
     HF_MODELS_PATH: str = os.getenv("HOME") + "/.cache/huggingface/hub/"
@@ -66,7 +68,6 @@ class Settings(BaseSettings):
     # llama.cpp web server (LLAMA_SERVER_URL) instead of using the in-process
     # Llama object. No API key is required for the local server.
     USE_LLAMA_SERVER: bool = True
-    LLAMA_SERVER_URL: str = "http://localhost:8080"
 
     # API
     API_V1_STR: str = "/api"
@@ -84,7 +85,7 @@ class Settings(BaseSettings):
     # (chat API) over HTTP.
     BACKEND_API_URL: str = "http://localhost:8000"
 
-    # If True, set database test data paths for RAG evaluation experiments
+    # If True, set database test data paths for RAG evaluation experiments, also avoid to store chat messages on every RAG call
     EVAL_MODE: bool = True
 
     # Database
@@ -99,9 +100,9 @@ class Settings(BaseSettings):
     else:
         CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    ENV_FILE: str = Path(__file__).parent.resolve().__str__() + "/.env"
+    MODEL_NAME: str = "glm-5.1" #"kimi-k2.7-code"
+    OPENAI_SERVER_URL: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" #"http://localhost:8080"
 
 
 config = Settings()

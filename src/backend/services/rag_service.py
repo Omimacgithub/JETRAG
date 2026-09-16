@@ -8,8 +8,16 @@ from sqlalchemy.orm import Session
 from src.backend.models.source import Source
 from src.backend.core.vector_store import get_or_create_collection, query_collection
 from llama_cpp import Llama
+from dotenv import load_dotenv
+import os
+from src.backend.models.chat_message import ChatMessage as DBChatMessage
+from src.backend.models.schemas import ChatMessageCreate
+
+load_dotenv(dotenv_path=config.ENV_FILE)
 
 logger = logging.getLogger(__name__)
+
+key = os.getenv("ALIBABA_API_KEY")
 
 if not config.MOCK_MODE and not config.USE_LLAMA_SERVER:
     llm = Llama(
@@ -27,9 +35,10 @@ if config.USE_LLAMA_SERVER:
     from openai import OpenAI
     try:
         client = OpenAI(
-            base_url=f"{config.LLAMA_SERVER_URL.rstrip('/')}/v1",
-            api_key="not-needed",
+            base_url=config.OPENAI_SERVER_URL, #f"{config.LLAMA_SERVER_URL.rstrip('/')}/v1",
+            api_key=key if key else "useless-key",
             timeout=300.0,
+            default_headers={"X-DashScope-Async": "disable"}
         )
         print("OpenAI client created succesfully")
     except Exception as e:
@@ -131,7 +140,7 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # 4.2 Vector search
     # 4.3 Retrieve Top-K chunks
     relevant_chunks = retrieve_relevant_chunks(chest_id, question, top_k=top_k)
-    print("THE RELEVANT: "+ str(relevant_chunks))
+    #print("THE RELEVANT: "+ str(relevant_chunks))
     if not relevant_chunks:
         system_msg = "I couldn't find any relevant information to answer your question."
         if config.STREAMING:
@@ -147,7 +156,10 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
 
     #When evaluating RAG system, we always want all sources enabled
     # 4.4 Filter by enabled sources
-    enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+    if not config.EVAL_MODE:
+        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+    else:
+        enabled_ids = list(set(meta["source_id"] for meta in chunk_metadata))
 
     if not enabled_ids:
         system_msg = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
@@ -187,8 +199,7 @@ def store_full_response(
 ) -> None:
     """Store full assistant response in database"""
     try:
-        from src.backend.models.chat_message import ChatMessage as DBChatMessage
-        from src.backend.models.schemas import ChatMessageCreate
+
         assistant_message = ChatMessageCreate(
             role="ASSISTANT",
             content=content,
@@ -315,15 +326,15 @@ A:"""
     # shape returned by llama_cpp.Llama ({"choices": [{"text": ...}]}) so callers
     # like process_rag_query keep working unchanged.
     if config.USE_LLAMA_SERVER:
-        if not config.LLAMA_SERVER_URL:
-            logger.error("USE_LLAMA_SERVER is True but LLAMA_SERVER_URL is empty")
+        if not config.OPENAI_SERVER_URL:
+            logger.error("USE_LLAMA_SERVER is True but OPENAI_SERVER_URL is empty")
             return {"choices": [{"text": "Sorry, the inference server URL is not configured."}]}
 
         try:
             response = client.chat.completions.create(
-                model="local-model",
+                model=config.MODEL_NAME,#"local-model",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=config.MAX_TOKENS,
+                #max_tokens=config.MAX_TOKENS,
                 temperature=0.8,
                 stream=False,
             )
@@ -379,8 +390,10 @@ def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
         #print("TESTO: ", str(response))
         answer = {"answer": response["choices"][0]["text"], "retrieved_documents": enabled_ids}
                     
-        print("Proceeding to message store")
-        store_full_response(db, chest_id, answer["answer"], enabled_ids)
+        # I bet RAGAS is performing a lot of process_rag_query requests asyncronously, running out all connections from database pool.
+        if not config.EVAL_MODE:
+            print("Proceeding to message store")
+            store_full_response(db, chest_id, answer["answer"], enabled_ids)
         # print("RESPUU: ", answer)
 
         # Extract source IDs used
