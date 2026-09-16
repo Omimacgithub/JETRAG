@@ -58,7 +58,7 @@ class Source(SourceBase):
 class ChatMessageBase(BaseModel):
     role: str  # USER or ASSISTANT
     content: str
-    sources_used: Optional[list] = None
+    retrieved_documents: Optional[list] = None
 
 
 class ChatMessageCreate(ChatMessageBase):
@@ -83,4 +83,4 @@ class RAGQuery(BaseModel):
 
 class RAGResponse(BaseModel):
     answer: str
-    sources_used: list
+    retrieved_documents: list

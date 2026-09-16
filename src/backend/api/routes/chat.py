@@ -43,7 +43,7 @@ async def sse_response_generator(
     assistant_message = ChatMessageCreate(
         role="ASSISTANT",
         content=chunk_text,
-        sources_used=response['sources_used'],
+        retrieved_documents=response['retrieved_documents'],
         chest_id=chest_id
     )
     background_tasks.add_task(_create_chat_message(db, assistant_message))
@@ -59,7 +59,7 @@ async def process_chat_query(
     user_message = ChatMessageCreate(
         role="USER",
         content=rag_query.question,
-        sources_used=None,
+        retrieved_documents=None,
         chest_id=rag_query.chest_id,
     )
     _create_chat_message(db, user_message)
@@ -83,7 +83,7 @@ async def process_chat_query(
     assistant_message = ChatMessageCreate(
         role="ASSISTANT",
         content=response["answer"],
-        sources_used=response["sources_used"],
+        retrieved_documents=response["retrieved_documents"],
         chest_id=rag_query.chest_id,
     )
 

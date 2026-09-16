@@ -69,10 +69,9 @@ def create_source(source: SourceCreate, db: Session=None):
         content_hash=content_hash,
         is_enabled=source.is_enabled,
     )
-    if not config.EVAL_MODE:
-        db.add(db_source)
-        db.commit()
-        db.refresh(db_source)
+    db.add(db_source)
+    db.commit()
+    db.refresh(db_source)
 
     # Process the source (chunking, embeddings, storage)
     process_source(db_source)

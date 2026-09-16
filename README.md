@@ -273,12 +273,11 @@ PROJECT_NAME=JETRAG
 
 I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-judge evaluation framework, to provide measurable metrics of performance (example: precission).
 
-To start the evaluation, run the following script:
+To start the evaluation, run the following script on the root project dir:
 
 ~~~bash
 (source venv)
-cd src/backend/rag_evaluation
-python3 experiment.py
+python3 -m src.backend.rag_evaluation.experiment
 ~~~
 
 ## Troubleshooting

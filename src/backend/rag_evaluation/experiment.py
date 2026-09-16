@@ -1,29 +1,31 @@
-from create_dataset import download_and_save_dataset, create_ragas_dataset
-from eval import evaluate_rag
+#import sys
+#print("PATH: " + str(sys.path))
+from src.backend.rag_evaluation.create_dataset import download_and_save_dataset, create_ragas_dataset
 from openai import OpenAI
 from ragas.llms import llm_factory
-from src.backend.core.vector_store import get_or_create_collection
-from src.backend.services.source_service import create_source
-from src.backend.models.schemas import SourceCreate
-
 # Import required components
 import asyncio
 from datetime import datetime
+
+from src.backend.rag_evaluation.eval import evaluate_rag
+from src.backend.core.vector_store import get_or_create_collection
+#Loads all-Mini
+from src.backend.services.source_service import create_source
+from src.backend.models.schemas import SourceCreate
 
 LLM_BASE_URL = "http://localhost:8000/v1/"
 LLM_MODEL = "gemma4"
 API_KEY = "not-needed"
 
-#provide_llm: method for providing Gemma4 local model as OpenAI API compatible server for RAGAS
-def provide_llm():
-    client = OpenAI(base_url=LLM_BASE_URL, api_key=API_KEY)
-    return llm_factory(LLM_MODEL, client=client)
+#Code for providing Gemma4 local model as OpenAI API compatible server for RAGAS
+client = OpenAI(base_url=LLM_BASE_URL, api_key=API_KEY)
+llm = llm_factory(LLM_MODEL, client=client)
     
-async def run_evaluation():
+def run_evaluation():
     # Download and prepare dataset
     #dataset_path = download_and_save_dataset()
     dataset = create_ragas_dataset()#dataset_path)
-    knowledge_base = [
+    documents = [
     
 "Albert Einstein proposed the theory of relativity, which transformed our understanding of time, space, and gravity.",
     
@@ -40,14 +42,15 @@ async def run_evaluation():
     #collection = get_or_create_collection(collection_name=chest_id)
 
     # Create collection and add sources to ChromaDB
-    create_source(SourceCreate(name="Papadopoulo", type="TXT", content=knowledge_base, is_enabled=True, chest_id=chest_id))    
+    for i, source in enumerate(documents):
+        create_source(SourceCreate(name=f"Papadopoulo_{i}", type="TXT", content=source, is_enabled=True, chest_id=chest_id))    
 
     # Run evaluation experiment
     exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_naiverag"
-    results = await evaluate_rag.arun(
+    results = evaluate_rag.arun(
         dataset, 
         name=exp_name,
-        llm=provide_llm()
+        llm=llm
     )
 
     # Print results
@@ -60,5 +63,5 @@ async def run_evaluation():
     return results
 
 # Run the evaluation
-results = await run_evaluation()
+results = run_evaluation()
 print(results)

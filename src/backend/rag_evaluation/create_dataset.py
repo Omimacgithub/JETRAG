@@ -42,7 +42,7 @@ def create_ragas_dataset() -> Dataset:
         "Marie Curie was a physicist and chemist who conducted pioneering research on radioactivity and won two Nobel Prizes.",
         "Charles Darwin introduced the theory of evolution by natural selection in his book 'On the Origin of Species'."
     ]
-    dataset = Dataset(name="hf_doc_qa_eval", root_dir=".")
+    dataset = Dataset(name="scientists", backend="local/csv", root_dir="src/backend/rag_evaluation/")
     for sample_query, expected_response in zip(sample_queries, expected_responses):
         dataset.append({"question": sample_query, "expected_answer": expected_response})
 

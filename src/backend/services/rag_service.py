@@ -133,24 +133,22 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # print("METADATA CHUNKSSS: ", chunk_metadata)
 
     #When evaluating RAG system, we always want all sources enabled
-    if not config.EVAL_MODE:
-        # 4.4 Filter by enabled sources
-        enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
+    # 4.4 Filter by enabled sources
+    enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
 
-        if not enabled_ids:
-            system_msg = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
-            if config.STREAMING:
-                chunks_collected.append(system_msg)
-            return system_msg, None
+    if not enabled_ids:
+        system_msg = "I found some information, but it's from disabled sources. Please enable some sources to get an answer."
+        if config.STREAMING:
+            chunks_collected.append(system_msg)
+        return system_msg, None
 
-        # Get the actual chunk texts for filtered metadata
-        # We need to match metadata to get the correct chunk texts
-        # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
-        filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids]
+    # Get the actual chunk texts for filtered metadata
+    # We need to match metadata to get the correct chunk texts
+    # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
+    filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids]
 
-        return [x for i, x in enumerate(chunk_texts) if i in filtered_chunks], enabled_ids
-    else:
-        return chunk_texts, chunk_metadata
+    return [x for i, x in enumerate(chunk_texts) if i in filtered_chunks], enabled_ids
+
     """
     filtered_chunks = []
     for meta in enabled_ids:
@@ -172,7 +170,7 @@ def format_sse_done() -> str:
 
 
 def store_full_response(
-    db: Session, chest_id: int, content: str, sources_used: List[int]
+    db: Session, chest_id: int, content: str, retrieved_documents: List[int]
 ) -> None:
     """Store full assistant response in database"""
     try:
@@ -181,7 +179,7 @@ def store_full_response(
         assistant_message = ChatMessageCreate(
             role="ASSISTANT",
             content=content,
-            sources_used=sources_used,
+            retrieved_documents=retrieved_documents,
             chest_id=chest_id,
         )
 
@@ -320,34 +318,28 @@ def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
         # 4.5 Use plain chunks with user query for LLM answer
         enabled_ids = None
         chunk_metadata = None
-        if not config.EVAL_MODE:
-            chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
-        else: 
-            chunk_text, chunk_metadata = get_and_filter_chunks(db, chest_id, question, top_k=5)
+        chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
         if enabled_ids is None:
             # Not relevant chunks found neither active sources
-            return {"answer": chunk_text, "sources_used": []}
+            return {"answer": chunk_text, "retrieved_documents": []}
         response = rag_answer_generator(question, chunk_text)
         #print("TESTO: ", str(response))
-        if not config.EVAL_MODE:
-            answer = {"answer": response["choices"][0]["text"], "sources_used": enabled_ids}
+        answer = {"answer": response["choices"][0]["text"], "retrieved_documents": enabled_ids}
                     
-            print("Proceeding to message store")
-            store_full_response(db, chest_id, answer["answer"], enabled_ids)
-            # print("RESPUU: ", answer)
+        print("Proceeding to message store")
+        store_full_response(db, chest_id, answer["answer"], enabled_ids)
+        # print("RESPUU: ", answer)
 
-            # Extract source IDs used
-            # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
+        # Extract source IDs used
+        # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
 
-            return answer
-        else:
-            return {"answer": response["choices"][0]["text"], "retrieved_documents": chunk_metadata}
+        return answer
 
     except Exception as e:
         logger.error(f"Error processing RAG query: {e}")
         return {
             "answer": "Sorry, I encountered an error while processing your question.",
-            "sources_used": [],
+            "retrieved_documents": [],
         }
 
 # You cannot use async keyword when function that streams data for StreamingResponse have blocking functions (example: time.sleep)

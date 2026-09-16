@@ -85,7 +85,7 @@ class TestChatSchemas:
     def test_chat_message_base(self):
         data = ChatMessageBase(role="USER", content="Hello")
         assert data.role == "USER"
-        assert data.sources_used is None
+        assert data.retrieved_documents is None
 
     def test_chat_message_create(self):
         data = ChatMessageCreate(role="USER", content="Hi", chest_id=1)
@@ -101,6 +101,6 @@ class TestChatSchemas:
         assert data.stream is True
 
     def test_rag_response(self):
-        data = RAGResponse(answer="Answer", sources_used=[1, 2])
+        data = RAGResponse(answer="Answer", retrieved_documents=[1, 2])
         assert data.answer == "Answer"
-        assert data.sources_used == [1, 2]
+        assert data.retrieved_documents == [1, 2]

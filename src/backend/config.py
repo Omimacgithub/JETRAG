@@ -1,16 +1,25 @@
 from pydantic_settings import BaseSettings
-import os
 
+import os
 
 class Settings(BaseSettings):
     # Path of models downloaded from huggingface hub
     HF_MODELS_PATH: str = os.getenv("HOME") + "/.cache/huggingface/hub/"
 
+    # Adapt RAG system to evalute using RAGAS (example: set all sources to enabled automatically)
+    EVAL_MODE: bool = True
+
     # Database
-    DATABASE_URL: str = "sqlite:///msgs_data/jetrag.db"
+    if EVAL_MODE:
+        DATABASE_URL: str = "sqlite:///test_data/jetrag.db"
+    else:
+        DATABASE_URL: str = "sqlite:///msgs_data/jetrag.db"
 
     # ChromaDB
-    CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
+    if EVAL_MODE:
+        CHROMA_PERSIST_DIRECTORY: str = "./data/test/chroma"
+    else:
+        CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
 
     # Embeddings model path
     EMBEDDINGS_MODEL_PATH: str = (
@@ -33,9 +42,6 @@ class Settings(BaseSettings):
 
     # Flag to not load LLM model (for frontend debugging).
     MOCK_MODE: bool = False
-
-    # Adapt RAG system to evalute using RAGAS (example: set all sources to enabled automatically)
-    EVAL_MODE: bool = False
 
     # ------------------------------------------------------
     # --- LLM SETTINGS (used on services/rag_service.py) ---

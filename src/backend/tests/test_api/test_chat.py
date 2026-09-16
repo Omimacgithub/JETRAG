@@ -13,7 +13,7 @@ class TestChatAPI:
     def test_chat_query_non_streaming(self, mock_asyncio_run, client):
         mock_asyncio_run.return_value = {
             "answer": "Test answer",
-            "sources_used": [1],
+            "retrieved_documents": [1],
         }
         chest_id = self._create_chest(client)
         response = client.post(
@@ -27,7 +27,7 @@ class TestChatAPI:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["answer"] == "Test answer"
-        assert data["sources_used"] == [1]
+        assert data["retrieved_documents"] == [1]
 
     def test_chat_query_missing_chest_id(self, client):
         response = client.post(
@@ -76,7 +76,7 @@ class TestChatAPI:
     def test_chat_query_no_sources(self, mock_asyncio_run, client):
         mock_asyncio_run.return_value = {
             "answer": "I couldn't find any relevant information to answer your question.",
-            "sources_used": [],
+            "retrieved_documents": [],
         }
         chest_id = self._create_chest(client)
         response = client.post(
@@ -90,11 +90,11 @@ class TestChatAPI:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert "couldn't find" in data["answer"]
-        assert data["sources_used"] == []
+        assert data["retrieved_documents"] == []
 
     @patch("src.backend.api.routes.chat.asyncio.run")
     def test_chat_default_stream_false(self, mock_asyncio_run, client):
-        mock_asyncio_run.return_value = {"answer": "answer", "sources_used": []}
+        mock_asyncio_run.return_value = {"answer": "answer", "retrieved_documents": []}
         chest_id = self._create_chest(client)
         response = client.post(
             "/api/chat/",
