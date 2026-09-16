@@ -22,14 +22,27 @@ if not config.MOCK_MODE and not config.USE_LLAMA_SERVER:
         type_v=config.TYPE_V,
         flash_attn=config.FLASH_ATTN,
     )
-
+if config.USE_LLAMA_SERVER:
+    import openai
+    from openai import OpenAI
+    try:
+        client = OpenAI(
+            base_url=f"{config.LLAMA_SERVER_URL.rstrip('/')}/v1",
+            api_key="not-needed",
+            timeout=300.0,
+        )
+        print("OpenAI client created succesfully")
+    except Exception as e:
+        print("Error when trying to connect to OpenAI web server: " + e)
+        exit(-1)
+else:
 # Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
-print(
-    "Built Llama class and loaded "
-    + "'"
-    + config.GGUF_MODEL.split("/")[-1]
-    + "'"
-    + " model"
+    print(
+        "Built Llama class and loaded "
+        + "'"
+        + config.GGUF_MODEL.split("/")[-1]
+        + "'"
+        + " model"
 )
 
 
@@ -302,36 +315,28 @@ A:"""
     # shape returned by llama_cpp.Llama ({"choices": [{"text": ...}]}) so callers
     # like process_rag_query keep working unchanged.
     if config.USE_LLAMA_SERVER:
-        import httpx
-
         if not config.LLAMA_SERVER_URL:
             logger.error("USE_LLAMA_SERVER is True but LLAMA_SERVER_URL is empty")
             return {"choices": [{"text": "Sorry, the inference server URL is not configured."}]}
 
-        payload = {
-            "prompt": prompt,
-            "n_predict": config.MAX_TOKENS,
-            "stream": False,
-            "temperature": 0.8,
-        }
         try:
-            with httpx.Client(timeout=httpx.Timeout(300.0, connect=10.0)) as client:
-                resp = client.post(
-                    f"{config.LLAMA_SERVER_URL.rstrip('/')}/completion",
-                    json=payload,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except httpx.HTTPStatusError as e:
+            response = client.chat.completions.create(
+                model="local-model",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=config.MAX_TOKENS,
+                temperature=0.8,
+                stream=False,
+            )
+        except openai.APIStatusError as e:
             logger.error(
-                f"llama.cpp server HTTP error: {e.response.status_code} - {e.response.text}"
+                f"llama.cpp server HTTP error: {e.status_code} - {e.response.text}"
             )
             return {
                 "choices": [
                     {"text": "Sorry, the inference server returned an error while generating an answer."}
                 ]
             }
-        except (httpx.RequestError, ValueError) as e:
+        except openai.APIError as e:
             logger.error(f"Error contacting llama.cpp server: {e}")
             return {
                 "choices": [
@@ -339,7 +344,7 @@ A:"""
                 ]
             }
 
-        content = data.get("content", "")
+        content = response.choices[0].message.content or ""
         if not isinstance(content, str):
             content = str(content)
         return {"choices": [{"text": content}]}

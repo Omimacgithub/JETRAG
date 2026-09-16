@@ -39,8 +39,9 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [x] Docker deployment
 - [x] Fixed: Sources are created without matter if the chest exist
 - [x] Fixed: Sources are not being properly deleted because missing chunk ids on deletion.
+- [x] Created OpenAI client for inference with API LLMs (**only available in non-streaming mode**)
 - [ ] Discuss if source_id should be an unique identifier or should be attached to the source 
-- [ ] RAG pipeline evaluation system (RAGAS)
+- [ ] (**non-streaming mode**) RAG pipeline evaluation system (RAGAS)
 - [ ] Proper text rendering (tables aren't displayed correctly)
 - [ ] Source processing from URL
 - [ ] Source processing from file
@@ -275,7 +276,7 @@ I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-j
 
 Run the llama web server (local):
 ~~~bash
-python3 -m llama_cpp.server --n_gpu_layers -1 --model /home/omi/.cache/huggingface/hub/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
+python3 -m llama_cpp.server --n_gpu_layers 37 --model /home/omi/.cache/huggingface/hub/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
 ~~~
 
 To start the evaluation, run the following script on the root project dir:
