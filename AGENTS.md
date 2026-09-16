@@ -10,8 +10,8 @@ JETRAG should allow its deployment on 8 GB RAM NVIDIA Jetson devices (ARM64 with
 JETRAG web app should use REST APIs for interaction with the assistant and to manage information sources for every chest. Information sources are splitted in chunks, then chunk embeddings are computed and stored on a VectorDB (ChromaDB performs the last two steps). Chest and information sources data are stored in SQLite models.
 
 ## Technical context
-- Stack: can be seen on TECHSTACK.md file on current dir.
-- Database tables: can be seen on SQLSCHEMA.md file on current dir.
+- Stack: can be seen on TECHSTACK.md file on prompts dir.
+- Database tables: can be seen on SQLSCHEMA.md file on prompts dir.
 - Project conventions: Use standard conventions.
 
 ## Code requirements
@@ -25,11 +25,11 @@ JETRAG web app should use REST APIs for interaction with the assistant and to ma
 8.Any new environment variables used on backend code should be declared on src/backend/config.py
 
 ## Sending format
-Write the code on separated blocks by file, TREE.md file on current dir provides an example tree file structure you can use as guidance. Point route of every file as a header.
+Write the code on separated blocks by file, TREE.md file on prompts dir provides an example tree file structure you can use as guidance. Point route of every file as a header.
 
 ## Relevant implementation notes
 To not commit the same mistakes from previous builds, I share to you the following aspects you should consider when building the code:
-- Use JavaScript localStorage when creating lists to persist changes between page updates.
+- DOCUMENT ALL THE CODE YOU BUILD FOLLOWING DOCS.md ON PROMPTS DIR
 - When creating Svelte code, always be aware of using API functions that exist on both browser and server. If the previous is not possible, use the flag browser of $app/environment.
 - Before using npm ci command, be sure that package-lock.json file exists.
 - Check that sveltekit and vite config support TypeScript code compilation.
