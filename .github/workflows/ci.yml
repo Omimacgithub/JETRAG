@@ -2,7 +2,7 @@ name: Check backend and frontend
 
 on:
   pull_request:
-  types: [opened, reopened]
+    branches: [ "master" ]
 
 #  push:
 #    branches:

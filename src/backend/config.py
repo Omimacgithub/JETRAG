@@ -6,21 +6,6 @@ class Settings(BaseSettings):
     # Path of models downloaded from huggingface hub
     HF_MODELS_PATH: str = os.getenv("HOME") + "/.cache/huggingface/hub/"
 
-    # Adapt RAG system to evalute using RAGAS (example: set all sources to enabled automatically)
-    EVAL_MODE: bool = True
-
-    # Database
-    if EVAL_MODE:
-        DATABASE_URL: str = "sqlite:///test_data/jetrag.db"
-    else:
-        DATABASE_URL: str = "sqlite:///msgs_data/jetrag.db"
-
-    # ChromaDB
-    if EVAL_MODE:
-        CHROMA_PERSIST_DIRECTORY: str = "./data/test/chroma"
-    else:
-        CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
-
     # Embeddings model path
     EMBEDDINGS_MODEL_PATH: str = (
         HF_MODELS_PATH
@@ -90,11 +75,29 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------
     # --- RAG EVALUATION SETTINGS (used by rag_evaluation/* ) ---
     # ---------------------------------------------------------
+    
+    # Send requests to backend when evaluating RAG, this can be useful when evaluating remote instances of JETRAG.
+    USE_BACKEND: bool = False
 
     # REST endpoint of the running JETRAG backend, used by the evaluation
     # pipeline to feed documents (sources API) and query the RAG system
     # (chat API) over HTTP.
     BACKEND_API_URL: str = "http://localhost:8000"
+
+    # If True, set database test data paths for RAG evaluation experiments
+    EVAL_MODE: bool = True
+
+    # Database
+    if EVAL_MODE:
+        DATABASE_URL: str = "sqlite:///test_data/jetrag.db"
+    else:
+        DATABASE_URL: str = "sqlite:///msgs_data/jetrag.db"
+
+    # ChromaDB
+    if EVAL_MODE:
+        CHROMA_PERSIST_DIRECTORY: str = "./data/test/chroma"
+    else:
+        CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
 
     class Config:
         case_sensitive = True

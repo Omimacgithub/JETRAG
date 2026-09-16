@@ -8,9 +8,16 @@ from openai import AsyncOpenAI
 from ragas.llms import llm_factory
 
 from src.backend.config import config
-from src.backend.models.schemas import SourceCreate
+from src.backend.models.schemas import ChestCreate, SourceCreate
 from src.backend.rag_evaluation.create_dataset import create_ragas_dataset
 from src.backend.rag_evaluation.eval import evaluate_rag
+from src.backend.core.database import get_db
+from src.backend.services.chest_service import create_chest, get_chests
+from src.backend.services.source_service import (
+    create_source,
+    delete_source,
+    get_sources_by_chest,
+)
 
 # OpenAI-compatible endpoint exposed by the local llama.cpp server hosting the LLM
 LLM_BASE_URL = config.LLAMA_SERVER_URL.rstrip("/") + "/v1/"
@@ -36,40 +43,77 @@ def setup_evaluation_chest(documents: List[str]) -> int:
     Returns:
         chest_id of the chest that owns the uploaded sources.
     """
-    backend_url = config.BACKEND_API_URL.rstrip("/")
-    with httpx.Client(base_url=backend_url, timeout=httpx.Timeout(120.0)) as http_client:
-        # Reuse the evaluation chest if it already exists, create it otherwise.
-        chests = http_client.get("/api/chests/")
-        chests.raise_for_status()
-        chest_id = next(
-            (chest["id"] for chest in chests.json() if chest["name"] == CHEST_NAME),
-            None,
-        )
-        if chest_id is None:
-            created_chest = http_client.post("/api/chests/", json={"name": CHEST_NAME})
-            created_chest.raise_for_status()
-            chest_id = created_chest.json()["id"]
-
-        # Clear sources loaded on previous runs to keep the vector store clean.
-        sources = http_client.get("/api/sources/", params={"chest_id": chest_id})
-        sources.raise_for_status()
-        for source in sources.json():
-            deleted = http_client.delete(f"/api/sources/{source['id']}")
-            deleted.raise_for_status()
-
-        # Store every document as a source through the sources API.
-        for index, document in enumerate(documents):
-            source = SourceCreate(
-                name=f"eval_source_{index}",
-                type="TXT",
-                content=document,
-                is_enabled=True,
-                chest_id=chest_id,
+    if config.USE_BACKEND:
+        backend_url = config.BACKEND_API_URL.rstrip("/")
+        with httpx.Client(base_url=backend_url, timeout=httpx.Timeout(120.0)) as http_client:
+            # Reuse the evaluation chest if it already exists, create it otherwise.
+            chests = http_client.get("/api/chests/")
+            chests.raise_for_status()
+            chest_id = next(
+                (chest["id"] for chest in chests.json() if chest["name"] == CHEST_NAME),
+                None,
             )
-            created_source = http_client.post("/api/sources/", json=source.model_dump())
-            created_source.raise_for_status()
+            if chest_id is None:
+                created_chest = http_client.post("/api/chests/", json={"name": CHEST_NAME})
+                created_chest.raise_for_status()
+                chest_id = created_chest.json()["id"]
 
-        return chest_id
+            # Clear sources loaded on previous runs to keep the vector store clean.
+            sources = http_client.get("/api/sources/", params={"chest_id": chest_id})
+            sources.raise_for_status()
+            for source in sources.json():
+                deleted = http_client.delete(f"/api/sources/{source['id']}")
+                deleted.raise_for_status()
+
+            # Store every document as a source through the sources API.
+            for index, document in enumerate(documents):
+                source = SourceCreate(
+                    name=f"eval_source_{index}",
+                    type="TXT",
+                    content=document,
+                    is_enabled=True,
+                    chest_id=chest_id,
+                )
+                created_source = http_client.post("/api/sources/", json=source.model_dump())
+                created_source.raise_for_status()
+    else:
+        # In-process path: replicate what the chests/sources API routes do by
+        # calling the same services directly, without a running backend server.
+        # get_db is a generator-based dependency, so the session lifecycle is
+        # managed manually here.
+        db_generator = get_db()
+        db = next(db_generator)
+        try:
+            # Reuse the evaluation chest if it already exists, create it otherwise.
+            chest = next(
+                (chest for chest in get_chests(db) if chest.name == CHEST_NAME),
+                None,
+            )
+            if chest is None:
+                chest = create_chest(db, ChestCreate(name=CHEST_NAME))
+            chest_id = chest.id
+
+            # Clear sources loaded on previous runs to keep the vector store clean.
+            for source in get_sources_by_chest(db, chest_id):
+                delete_source(db, source.id)
+
+            # Store every document as a source (chunking + embeddings happen
+            # inside create_source -> process_source, same as the API route).
+            for index, document in enumerate(documents):
+                create_source(
+                    SourceCreate(
+                        name=f"eval_source_{index}",
+                        type="TXT",
+                        content=document,
+                        is_enabled=True,
+                        chest_id=chest_id,
+                    ),
+                    db,
+                )
+        finally:
+            db_generator.close()
+
+    return chest_id
 
 
 def run_evaluation():

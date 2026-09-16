@@ -274,16 +274,13 @@ PROJECT_NAME=JETRAG
 
 I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-judge evaluation framework, to provide measurable metrics of performance (example: faithfullness).
 
+> [!NOTE]
+> You can run the evaluation with/out the backend server (setting config.USE_BACKEND flag). This can be useful if you want to evaluate a remote instance of JETRAG.
+
 Start llama web server (local):
 ~~~bash
 (source venv)
 python3 -m llama_cpp.server --n_gpu_layers 37 --model /home/omi/.cache/huggingface/hub/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
-uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
-~~~
-
-Start backend:
-~~~bash
-uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
 ~~~
 
 To start the evaluation, run the following script on the root project dir:

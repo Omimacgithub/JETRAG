@@ -7,6 +7,10 @@ import httpx
 from ragas import experiment
 
 from src.backend.config import config
+from src.backend.core.database import get_db
+from src.backend.models.chat_message import ChatMessage as DBChatMessage
+from src.backend.models.schemas import ChatMessageCreate
+from src.backend.services import rag_service
 
 from ragas.metrics import DiscreteMetric
 
@@ -50,14 +54,37 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
     question = row["question"]
 
     # Query the RAG system by calling the backend chat API endpoint
-    payload = {"question": question, "chest_id": chest_id, "stream": False}
-    async with httpx.AsyncClient(
-        base_url=config.BACKEND_API_URL.rstrip("/"),
-        timeout=httpx.Timeout(300.0),
-    ) as http_client:
-        chat_response = await http_client.post("/api/chat/", json=payload)
-        chat_response.raise_for_status()
-        rag_response = chat_response.json()
+    if config.USE_BACKEND:
+        payload = {"question": question, "chest_id": chest_id, "stream": False}
+        async with httpx.AsyncClient(
+            base_url=config.BACKEND_API_URL.rstrip("/"),
+            timeout=httpx.Timeout(300.0),
+        ) as http_client:
+            chat_response = await http_client.post("/api/chat/", json=payload)
+            chat_response.raise_for_status()
+            rag_response = chat_response.json()
+    else:
+        # In-process path: call the same RAG service the chat API route uses,
+        # without a running backend server. The call is blocking (vector search
+        # + LLM inference), so it runs in a worker thread to keep ragas' event
+        # loop responsive.
+        db_generator = get_db()
+        db = next(db_generator)
+        try:
+            user_message = ChatMessageCreate(
+                role="USER",
+                content=question,
+                retrieved_documents=None,
+                chest_id=chest_id,
+            )
+            db.add(DBChatMessage(**user_message.dict()))
+            db.commit()
+
+            rag_response = await asyncio.to_thread(
+                rag_service.process_rag_query, chest_id, question, db
+            )
+        finally:
+            db_generator.close()
 
     # Evaluate correctness asynchronously
     score = await correctness_metric.ascore(
