@@ -1,7 +1,8 @@
 import csv
 import sys
+import time
 
-#Va a petar
+# Not for all systems
 csv.field_size_limit(sys.maxsize)
 
 from datetime import datetime
@@ -13,6 +14,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from ragas.llms import llm_factory
+from ragas import Dataset
 
 from src.backend.config import config
 from src.backend.models.schemas import ChestCreate, SourceCreate
@@ -25,22 +27,14 @@ from src.backend.services.source_service import (
     delete_source,
     get_sources_by_chest,
 )
-from dotenv import load_dotenv
-import os
-
-load_dotenv(dotenv_path=config.ENV_FILE)
-#print("ENV_FILE: " + config.ENV_FILE)
-#print("key: " + os.getenv("ALIBABA_API_KEY"))
-
-# OpenAI-compatible endpoint exposed by the local llama.cpp server hosting the LLM
-#LLM_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" #config.LLAMA_SERVER_URL.rstrip("/") + "/v1/"
-key =  os.getenv("ALIBABA_API_KEY") #"not-needed"
 
 # Name of the chest used to group every document uploaded during evaluation
 CHEST_NAME = "ragas_evaluation"
+BATCH_SIZE = 15
 
 # Code for providing Gemma4 local model as OpenAI API compatible server for RAGAS
-client = AsyncOpenAI(base_url=config.OPENAI_SERVER_URL, api_key=key if key else "useless-key", default_headers={"X-DashScope-Async": "disable"})
+client = AsyncOpenAI(base_url=config.OPENAI_SERVER_URL,#"http://localhost:8080/v1", 
+                     api_key=config.API_KEY)#, default_headers={"X-DashScope-Async": "disable"})
 llm = llm_factory(config.MODEL_NAME, client=client)
 
 
@@ -86,31 +80,47 @@ def setup_evaluation_chest(documents: List[Dict[str, str]]) -> int:
                 created_source = http_client.post("/api/sources/", json=source.model_dump())
                 created_source.raise_for_status()
     else:
+        print("Getting database, please wait... ")
+        start = time.time()
         db_generator = get_db()
         db = next(db_generator)
+        print(f"Time: {time.time() - start} seconds")
         try:
             chest = next(
                 (chest for chest in get_chests(db) if chest.name == CHEST_NAME),
                 None,
             )
             if chest is None:
-                chest = create_chest(db, ChestCreate(name=CHEST_NAME))
-            chest_id = chest.id
+                print("Creating chest, please wait...")
+                start = time.time()
+                new_chest = create_chest(db, ChestCreate(name=CHEST_NAME))
+                print(f"Time: {time.time() - start} seconds")
 
-            for source in get_sources_by_chest(db, chest_id):
-                delete_source(db, source.id)
+                chest_id = new_chest.id
 
-            for document in documents:
-                create_source(
-                    SourceCreate(
-                        name=document["source"],
-                        type="TXT",
-                        content=document["text"],
-                        is_enabled=True,
-                        chest_id=chest_id,
-                    ),
-                    db,
-                )
+                print("Deleting sources, please wait...")
+                start = time.time()
+                for source in get_sources_by_chest(db, chest_id):
+                    delete_source(db, source.id)
+                print(f"Time: {time.time() - start} seconds")
+
+                print("Creating sources from documents, please wait...")
+                start = time.time()
+                for document in documents:
+                    create_source(
+                        SourceCreate(
+                            name=document["source"],
+                            type="TXT",
+                            content=document["text"],
+                            is_enabled=True,
+                            chest_id=chest_id,
+                        ),
+                        db,
+                    )
+                print(f"Time: {time.time() - start} seconds")
+            else: 
+                chest_id = chest.id
+
         finally:
             db_generator.close()
 
@@ -124,22 +134,50 @@ def load_documents() -> List[Dict[str, str]]:
         return [{"text": row["text"], "source": row["source"]} for row in reader]
 
 
-def run_evaluation():
-    print("Creating dataset, please wait...")
+async def run_evaluation():
+    print("INFO: Creating dataset, please wait...")
+    start = time.time()
     dataset = create_ragas_dataset()
-    print("Loading document, please wait...")
+    print(f"Time: {time.time() - start} seconds")
+    print("INFO: Loading document, please wait...")
+    start = time.time()
     documents = load_documents()
-
+    print(f"Time: {time.time() - start} seconds")
     # Store documents into ChromaDB through the sources API before evaluating
     print("Store documents into ChromaDB through the sources API before evaluating, please wait...")
     chest_id = setup_evaluation_chest(documents)
 
-    # Run evaluation experiment
-    exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_naiverag"
-    print("Run evaluation, please wait...")
-    results = asyncio.run(
-        evaluate_rag.arun(dataset, name=exp_name, llm=llm, chest_id=chest_id)
+    results = []
+    items = list(dataset)
+
+    rag_implementation = config.RAG_IMPL if hasattr(config, "RAG_IMPL") else "naive"
+
+    
+    for xed, i in enumerate(range(0, len(items), BATCH_SIZE)):
+        exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M')}_" + rag_implementation + f"_rag_batch_{xed}"
+        print(f"Run evaluation on batch {xed}, please wait...")
+        start = time.time()
+        batch = items[i:i + BATCH_SIZE]
+        print(f"Processing batch {i//BATCH_SIZE + 1}/{(len(items) + BATCH_SIZE - 1)//BATCH_SIZE}")
+
+        batch_dataset = Dataset(
+        name=dataset.name,
+        backend=dataset.backend,
+        #root_dir=dataset.root_dir,
+        data=batch
     )
+        
+        batch_results = await evaluate_rag.arun(batch_dataset, name=exp_name, llm=llm, chest_id=chest_id)
+        results.extend(batch_results)
+
+    # Run evaluation experiment
+    #exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_naiverag"
+    #print("Run evaluation, please wait...")
+    #start = time.time()
+    #results = asyncio.run(
+    #    evaluate_rag.arun(dataset, name=exp_name, llm=llm, chest_id=chest_id)
+    #)
+    #print(f"Time: {time.time() - start} seconds")
 
     # Print results
     if results:
@@ -198,7 +236,7 @@ def print_results_table(results: list) -> None:
 
 
 # Run the evaluation
-results = run_evaluation()
+results = asyncio.run(run_evaluation())
 
 # Pretty-print results table
 print_results_table(results)

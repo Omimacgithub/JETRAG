@@ -1,5 +1,6 @@
 # examples/ragas_examples/improve_rag/evals.py
 # Followed the tutorial https://docs.ragas.io/en/stable/tutorials/rag/
+import time
 import asyncio
 from typing import Dict, Any
 import httpx
@@ -81,15 +82,31 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
             db.add(DBChatMessage(**user_message.dict()))
             db.commit()
         '''
+        print("Call to RAG pipeline, please wait...")
+        start = time.time()
+        #semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent tasks
+        #async with semaphore:
+        '''
         rag_response = await asyncio.to_thread(
             rag_service.process_rag_query, chest_id, question, #db
         )
         '''
+        rag_response = await rag_service.process_rag_query(chest_id=chest_id, question=question)
+        '''
         finally:
             db_generator.close()
         '''
+        print("I have results!!!!")
 
+    #print("question: ", str(question))
+    #print("row: ", str(row))
+    #print("rag_response: ", str(rag_response))
+    #print("llm: ", str(llm))
     # Evaluate correctness asynchronously
+    #await rag_response
+
+    #print("rag_response: ", str(rag_response))
+
     score = await correctness_metric.ascore(
         question=question,
         expected_answer=row["expected_answer"],
@@ -97,6 +114,10 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         llm=llm
     )
 
+    print("Now I am fine!!!!")
+    #await score
+    #print("score: ", str(score))
+    
     # Return evaluation results
     result = {
         **row,
@@ -105,6 +126,8 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         "correctness_reason": score.reason,
         "retrieved_documents": rag_response["retrieved_documents"]
     }
+    print("Maybe I failed at this point!!!!")
+    print(f"Time: {time.time() - start} seconds")
 
     '''
     result = {
