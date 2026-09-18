@@ -40,12 +40,13 @@ JETRAG is a web application that allows users to interact with a **Retrieval-Aug
 - [x] Fixed: Sources are created without matter if the chest exist
 - [x] Fixed: Sources are not being properly deleted because missing chunk ids on deletion.
 - [x] Created OpenAI client for inference with API LLMs (**only available in non-streaming mode**)
-- [ ] Discuss if source_id should be an unique identifier or should be attached to the source 
+- [ ] Review chat messages storage and display on frontend
 - [x] (**non-streaming mode**) implemented RAG pipeline evaluation system (RAGAS)
 - [ ] Proper text rendering (tables aren't displayed correctly)
 - [ ] Source processing from URL
 - [ ] Source processing from file
 - [ ] Stop LLM response generation event
+- [ ] Discuss if source_id should be an unique identifier or should be attached to the chest
 - [ ] Publish inference engines study (last section)
 
 ## Software Requirements

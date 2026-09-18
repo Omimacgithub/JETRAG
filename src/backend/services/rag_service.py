@@ -8,16 +8,12 @@ from sqlalchemy.orm import Session
 from src.backend.models.source import Source
 from src.backend.core.vector_store import get_or_create_collection, query_collection
 from llama_cpp import Llama
-from dotenv import load_dotenv
-import os
 from src.backend.models.chat_message import ChatMessage as DBChatMessage
 from src.backend.models.schemas import ChatMessageCreate
+if config.RAG_IMPL == "langchain":
+    from src.backend.services.rag_langchain import RAGLangChain
+    rlc = RAGLangChain()
 
-load_dotenv(dotenv_path=config.ENV_FILE)
-
-logger = logging.getLogger(__name__)
-
-key = os.getenv("ALIBABA_API_KEY")
 
 if not config.MOCK_MODE and not config.USE_LLAMA_SERVER:
     llm = Llama(
@@ -32,27 +28,28 @@ if not config.MOCK_MODE and not config.USE_LLAMA_SERVER:
     )
 if config.USE_LLAMA_SERVER:
     import openai
-    from openai import OpenAI
+    from openai import AsyncOpenAI
+
     try:
-        client = OpenAI(
-            base_url=config.OPENAI_SERVER_URL, #f"{config.LLAMA_SERVER_URL.rstrip('/')}/v1",
-            api_key=key if key else "useless-key",
+        client = AsyncOpenAI(
+            base_url=config.OPENAI_SERVER_URL,  # f"{config.LLAMA_SERVER_URL.rstrip('/')}/v1",
+            api_key=config.API_KEY,
             timeout=300.0,
-            default_headers={"X-DashScope-Async": "disable"}
+            default_headers={"X-DashScope-Async": "disable"},
         )
         print("OpenAI client created succesfully")
     except Exception as e:
         print("Error when trying to connect to OpenAI web server: " + e)
         exit(-1)
 else:
-# Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
+    # Llama class docs: https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama
     print(
         "Built Llama class and loaded "
         + "'"
         + config.GGUF_MODEL.split("/")[-1]
         + "'"
         + " model"
-)
+    )
 
 
 def retrieve_relevant_chunks(
@@ -82,16 +79,16 @@ def retrieve_relevant_chunks(
             "metadatas"
         ]  # results.get("metadatas", [[]])[0] if results.get("metadatas") else []
 
-        #print("Documents: " + str(documents) + ", Metadatas: " + str(metadatas))
+        # print("Documents: " + str(documents) + ", Metadatas: " + str(metadatas))
         # Combine documents with their metadata
         if documents == [[]] or metadatas == [[]]:
-            return [] 
+            return []
         relevant_chunks = list(zip(documents, metadatas))
 
         return relevant_chunks
 
     except Exception as e:
-        logger.error(f"Error retrieving relevant chunks: {e}")
+        print(f"Error retrieving relevant chunks: {e}")
         return []
 
 
@@ -135,12 +132,13 @@ def filter_sources_by_enabled(
     # Let's return the metadata for now and adjust the calling function
     return enabled_source_ids  # [meta for meta in chunk_metadata_list if meta["source_id"] in enabled_source_ids]
 
+
 def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # 4.1 Compute question embeddings (handled in retrieve_relevant_chunks)
     # 4.2 Vector search
     # 4.3 Retrieve Top-K chunks
     relevant_chunks = retrieve_relevant_chunks(chest_id, question, top_k=top_k)
-    #print("THE RELEVANT: "+ str(relevant_chunks))
+    # print("THE RELEVANT: "+ str(relevant_chunks))
     if not relevant_chunks:
         system_msg = "I couldn't find any relevant information to answer your question."
         if config.STREAMING:
@@ -154,7 +152,7 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # print("TEXTS CHUNKSSS: ", chunk_texts)
     # print("METADATA CHUNKSSS: ", chunk_metadata)
 
-    #When evaluating RAG system, we always want all sources enabled
+    # When evaluating RAG system, we always want all sources enabled
     # 4.4 Filter by enabled sources
     if not config.EVAL_MODE:
         enabled_ids = filter_sources_by_enabled(db, chest_id, chunk_metadata)
@@ -170,7 +168,9 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
     # Get the actual chunk texts for filtered metadata
     # We need to match metadata to get the correct chunk texts
     # chunk_metadata example: [{'source_id': 1, 'chunk_index': 0}, {'source_id': 2, 'chunk_index': 0}, {'chunk_index': 1, 'source_id': 3}, {'source_id': 3, 'chunk_index': 0}]
-    filtered_chunks = [i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids]
+    filtered_chunks = [
+        i for i, x in enumerate(chunk_metadata) if x["source_id"] in enabled_ids
+    ]
 
     return [x for i, x in enumerate(chunk_texts) if i in filtered_chunks], enabled_ids
 
@@ -183,6 +183,7 @@ def get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=[]):
                 filtered_chunks.append(chunk_text)
                 break
             """
+
 
 def format_sse_event(data: str) -> str:
     """Format data as SSE event"""
@@ -199,7 +200,6 @@ def store_full_response(
 ) -> None:
     """Store full assistant response in database"""
     try:
-
         assistant_message = ChatMessageCreate(
             role="ASSISTANT",
             content=content,
@@ -211,20 +211,22 @@ def store_full_response(
         db.add(db_chat_message)
         db.commit()
         db.refresh(db_chat_message)
-        logger.info(f"Stored streamed response for chest {chest_id}")
+        print(f"Stored streamed response for chest {chest_id}")
     except Exception as e:
-        logger.error(f"Error storing streamed response: {e}")
+        print(f"Error storing streamed response: {e}")
 
 
-async def rag_answer_async_generator(question: str, context_chunks: List[str], chunks_collected: List[str] = []) -> str:
+async def rag_answer_async_generator(
+    question: str, context_chunks: List[str], chunks_collected: List[str] = []
+) -> AsyncGenerator[str, None]:
     """Generate answer using LLM with retrieved context"""
-#    if not context_chunks:
-        # No context available, answer based on general knowledge
-#        prompt = f"""Question: {question}
+    #    if not context_chunks:
+    # No context available, answer based on general knowledge
+    #        prompt = f"""Question: {question}
 
-#Answer the question based on your general knowledge. If you don't know the answer, say so."""
-#    else:
-        # Combine context chunks
+    # Answer the question based on your general knowledge. If you don't know the answer, say so."""
+    #    else:
+    # Combine context chunks
     context = "\n\n".join(context_chunks)
     prompt = f"""Context information is below.
             ---------------------
@@ -233,14 +235,14 @@ async def rag_answer_async_generator(question: str, context_chunks: List[str], c
             Given the context information and not prior knowledge, answer the question.
             Q: {question}
             A:"""
-    #print("USER PROMPT: ", prompt)
+    # print("USER PROMPT: ", prompt)
     if not config.MOCK_MODE:
         output = llm(
             prompt,  # Prompt
             max_tokens=config.MAX_TOKENS,  # 32, # Generate up to 32 tokens, set to None to generate up to the end of the context window
             stream=True,  # Returns a generator object
         )  # Generate a completion, can also call create_completion
-        print("PREPARING FOR INFERENCE")
+        # print("PREPARING FOR INFERENCE")
         for item in output:
             text = item["choices"][0]["text"]
             if text:
@@ -249,51 +251,51 @@ async def rag_answer_async_generator(question: str, context_chunks: List[str], c
                 yield format_sse_event(text)
     else:
         output = [
-                "Hey! ",
-                "This ",
-                "is ",
-                "a ",
-                "prebuilt ",
-                "response",
-                "¿Ustedes ",
-                # "¿Ustedes ",
-                "piensan ",
-                "antes ",
-                "de ",
-                "hablar ",
-                "o ",
-                "hablan ",
-                "tras ",
-                "pensar?\n",
-                "**Haré todo**",
-                " lo que ",
-                "pueda y un ",
-                "poco más ",
-                "de lo que ",
-                "pueda ",
-                "si es que ",
-                "eso es posible, ",
-                "y haré todo ",
-                "lo posible ",
-                "e incluso lo ",
-                "imposible ",
-                "si también ",
-                "lo imposible ",
-                "es posible\n",
-                "Hay que ",
-                "fabricar ",
-                "máquinas ",
-                "que nos ",
-                "permitan seguir ",
-                "fabricando ",
-                "máquinas ",
-                "porque lo ",
-                "que no va a ",
-                "hacer nunca la ",
-                "máquina es ",
-                "fabricar ",
-                "**máquinas**",
-            ]
+            "Hey! ",
+            "This ",
+            "is ",
+            "a ",
+            "prebuilt ",
+            "response",
+            "¿Ustedes ",
+            # "¿Ustedes ",
+            "piensan ",
+            "antes ",
+            "de ",
+            "hablar ",
+            "o ",
+            "hablan ",
+            "tras ",
+            "pensar?\n",
+            "**Haré todo**",
+            " lo que ",
+            "pueda y un ",
+            "poco más ",
+            "de lo que ",
+            "pueda ",
+            "si es que ",
+            "eso es posible, ",
+            "y haré todo ",
+            "lo posible ",
+            "e incluso lo ",
+            "imposible ",
+            "si también ",
+            "lo imposible ",
+            "es posible\n",
+            "Hay que ",
+            "fabricar ",
+            "máquinas ",
+            "que nos ",
+            "permitan seguir ",
+            "fabricando ",
+            "máquinas ",
+            "porque lo ",
+            "que no va a ",
+            "hacer nunca la ",
+            "máquina es ",
+            "fabricar ",
+            "**máquinas**",
+        ]
 
     for chunk in output:
         # print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
@@ -302,15 +304,16 @@ async def rag_answer_async_generator(question: str, context_chunks: List[str], c
 
     yield format_sse_done()
 
+
 def rag_answer_generator(question: str, context_chunks: List[str]) -> str:
     """Generate answer using LLM with retrieved context"""
-#    if not context_chunks:
-        # No context available, answer based on general knowledge
-#        prompt = f"""Question: {question}
+    #    if not context_chunks:
+    # No context available, answer based on general knowledge
+    #        prompt = f"""Question: {question}
 
-#Answer the question based on your general knowledge. If you don't know the answer, say so."""
-#    else:
-        # Combine context chunks
+    # Answer the question based on your general knowledge. If you don't know the answer, say so."""
+    #    else:
+    # Combine context chunks
     context = "\n\n".join(context_chunks)
     prompt = f"""Context information is below.
 ---------------------
@@ -319,7 +322,7 @@ def rag_answer_generator(question: str, context_chunks: List[str]) -> str:
 Given the context information and not prior knowledge, answer the question.
 Q: {question}
 A:"""
-    #print("USER PROMPT: ", prompt)
+    # print("USER PROMPT: ", prompt)
     # --- llama.cpp web server inference path ---
     # When enabled, send the prompt to a localhosted llama.cpp server instead of
     # using the in-process Llama object. The response is normalized to the same
@@ -327,32 +330,36 @@ A:"""
     # like process_rag_query keep working unchanged.
     if config.USE_LLAMA_SERVER:
         if not config.OPENAI_SERVER_URL:
-            logger.error("USE_LLAMA_SERVER is True but OPENAI_SERVER_URL is empty")
-            return {"choices": [{"text": "Sorry, the inference server URL is not configured."}]}
+            print("USE_LLAMA_SERVER is True but OPENAI_SERVER_URL is empty")
+            return {
+                "choices": [
+                    {"text": "Sorry, the inference server URL is not configured."}
+                ]
+            }
 
         try:
             response = client.chat.completions.create(
-                model=config.MODEL_NAME,#"local-model",
+                model=config.MODEL_NAME,  # "local-model",
                 messages=[{"role": "user", "content": prompt}],
-                #max_tokens=config.MAX_TOKENS,
+                # max_tokens=config.MAX_TOKENS,
                 temperature=0.8,
                 stream=False,
             )
         except openai.APIStatusError as e:
-            logger.error(
-                f"llama.cpp server HTTP error: {e.status_code} - {e.response.text}"
+            print(
+                f"OpenAI server HTTP error: {e.status_code} - {e.response.text}"
             )
             return {
                 "choices": [
-                    {"text": "Sorry, the inference server returned an error while generating an answer."}
+                    {
+                        "text": "Sorry, the inference server returned an error while generating an answer."
+                    }
                 ]
             }
         except openai.APIError as e:
-            logger.error(f"Error contacting llama.cpp server: {e}")
+            print(f"Error contacting OpenAI server: {e}")
             return {
-                "choices": [
-                    {"text": "Sorry, I could not reach the inference server."}
-                ]
+                "choices": [{"text": "Sorry, I could not reach the inference server."}]
             }
 
         content = response.choices[0].message.content or ""
@@ -367,7 +374,7 @@ A:"""
             stream=False,  # Returns a generator object
         )  # Generate a completion, can also call create_completion
     else:
-        output = "Hey! This is a prebuilt response" 
+        output = "Hey! This is a prebuilt response"
     # This would be an async call in practice
     # For now, we'll return a placeholder
     # for item in output:
@@ -376,61 +383,73 @@ A:"""
     return output  # f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
 
 
-def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
+async def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
     """Process a complete RAG query"""
     try:
-        # 4.5 Use plain chunks with user query for LLM answer
-        enabled_ids = None
-        chunk_metadata = None
-        chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
-        if enabled_ids is None:
-            # Not relevant chunks found neither active sources
-            return {"answer": chunk_text, "retrieved_documents": []}
-        response = rag_answer_generator(question, chunk_text)
-        #print("TESTO: ", str(response))
-        answer = {"answer": response["choices"][0]["text"], "retrieved_documents": enabled_ids}
-                    
-        # I bet RAGAS is performing a lot of process_rag_query requests asyncronously, running out all connections from database pool.
-        if not config.EVAL_MODE:
-            print("Proceeding to message store")
-            store_full_response(db, chest_id, answer["answer"], enabled_ids)
-        # print("RESPUU: ", answer)
+        if config.RAG_IMPL == "naive":
+            # 4.5 Use plain chunks with user query for LLM answer
+            enabled_ids = None
+            chunk_metadata = None
+            chunk_text, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5)
+            if enabled_ids is None:
+                # Not relevant chunks found neither active sources
+                return {"answer": chunk_text, "retrieved_documents": []}
+            response = rag_answer_generator(question, chunk_text)
+            # print("TESTO: ", str(response))
+            answer = {
+                "answer": response["choices"][0]["text"],
+                "retrieved_documents": enabled_ids,
+            }
 
-        # Extract source IDs used
-        # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
+            # I bet RAGAS is performing a lot of process_rag_query requests asyncronously, running out all connections from database pool.
+            if not config.EVAL_MODE:
+                print("Proceeding to message store")
+                store_full_response(db, chest_id, answer["answer"], enabled_ids)
+            # print("RESPUU: ", answer)
+
+            # Extract source IDs used
+            # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
+        elif config.RAG_IMPL == "langchain":
+            print("I reached this point!!!!")
+            return await rlc.run_query(question=question)
 
         return answer
 
     except Exception as e:
-        logger.error(f"Error processing RAG query: {e}")
+        print(f"Error processing RAG query: {e}")
         return {
             "answer": "Sorry, I encountered an error while processing your question.",
             "retrieved_documents": [],
         }
+
 
 # You cannot use async keyword when function that streams data for StreamingResponse have blocking functions (example: time.sleep)
 async def stream_rag_response(
     db: Session, chest_id: int, question: str
 ) -> AsyncGenerator[str, None]:
     """Stream RAG response as SSE events"""
-    
+
     try:
         # List to store all yielded chunks when streaming for latter storage
         chunks_collected = []
-        context_chunks, enabled_ids = get_and_filter_chunks(db, chest_id, question, top_k=5, chunks_collected=chunks_collected)
+        context_chunks, enabled_ids = get_and_filter_chunks(
+            db, chest_id, question, top_k=5, chunks_collected=chunks_collected
+        )
         if enabled_ids is None:
             # Not relevant chunks found neither active sources
             yield format_sse_event(context_chunks)
             return
-        async for chunk in rag_answer_async_generator(question, context_chunks, chunks_collected=chunks_collected):
+        async for chunk in rag_answer_async_generator(
+            question, context_chunks, chunks_collected=chunks_collected
+        ):
             yield chunk
-        #print("Proceeding to message store")
+        # print("Proceeding to message store")
         # TODO: we'll deactivate this for the moment
-        #system_answer = " ".join(chunks_collected)
-        #store_full_response(db, chest_id, system_answer, enabled_ids)
-        
+        # system_answer = " ".join(chunks_collected)
+        # store_full_response(db, chest_id, system_answer, enabled_ids)
+
     except Exception as e:
-        logger.error(f"Error in streaming RAG response: {e}")
+        print.error(f"Error in streaming RAG response: {e}")
         error_chunk = "Sorry, I encountered an error while processing your question."
         yield format_sse_event(error_chunk)
-        #TODO: on the future this line may be needed; chunks_collected.append(error_chunk)
+        # TODO: on the future this line may be needed; chunks_collected.append(error_chunk)
