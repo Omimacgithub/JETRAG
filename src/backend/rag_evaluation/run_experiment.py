@@ -30,7 +30,7 @@ from src.backend.services.source_service import (
 
 # Name of the chest used to group every document uploaded during evaluation
 CHEST_NAME = "ragas_evaluation"
-BATCH_SIZE = 15
+BATCH_SIZE = 5
 
 # Code for providing Gemma4 local model as OpenAI API compatible server for RAGAS
 client = AsyncOpenAI(base_url=config.OPENAI_SERVER_URL,#"http://localhost:8080/v1", 

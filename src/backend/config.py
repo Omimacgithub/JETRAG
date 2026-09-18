@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     STREAMING: bool = False
 
     # Max tokens for model context (None if max token context)
-    MAX_TOKENS: int = 4096  # 16384 #8192 #6144 #4096
+    MAX_TOKENS: int = 8192 #4096  # 16384 #8192 #6144 #4096
 
     # Sets the number of tokens processed on each model forward pass
     BATCH_SIZE: int = 256
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     
     # RAG implementation to use, existing options are: "naive", "langchain"
     # "langchain" now is ONLY for evaluation purposes (collection_name is always hardcoded to "chest_2")
-    RAG_IMPL: str = "langchain"
+    RAG_IMPL: str = "naive"
 
     # Send requests to backend when evaluating RAG, this can be useful when evaluating remote instances of JETRAG.
     USE_BACKEND: bool = False
@@ -114,14 +114,16 @@ class Settings(BaseSettings):
     API_KEY: str = key if key else "useful-key"
     #ALIBABA_API_KEY: str <- gets the variable directly from .env file
     MODEL_NAME: str = "glm-5.1" #"kimi-k2.7-code"
-    OPENAI_SERVER_URL: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" #"http://localhost:8080"
+    # If using an OpenAI client, your URL should end on /v1, if using Python request API, your URL should end on /v1/chat/completion
+    OPENAI_SERVER_URL: str = "http://localhost:8080/v1" # "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 
 config = Settings()
 print("---- CONFIG.PY PARAMS ----")
 print("USE_LLAMA_SERVER (if you use a local llama_server or an API LLM, set this to true): " + str(config.USE_LLAMA_SERVER))
+print("MAX_TOKENS (None if max token context): " + str(config.MAX_TOKENS))
 print("RAG_IMPL: " + str(config.RAG_IMPL))
-print("USE_BACKEND: " + str(config.USE_BACKEND))
+print("USE_BACKEND (Send requests to backend when evaluating RAG): " + str(config.USE_BACKEND))
 print("OPENAI_SERVER_URL: " + str(config.OPENAI_SERVER_URL))
 print("MODEL_NAME: " + str(config.MODEL_NAME))
 print("STREAMING: " + str(config.STREAMING))

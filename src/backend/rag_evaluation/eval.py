@@ -86,12 +86,12 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         start = time.time()
         #semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent tasks
         #async with semaphore:
-        '''
+        
         rag_response = await asyncio.to_thread(
             rag_service.process_rag_query, chest_id, question, #db
         )
-        '''
-        rag_response = await rag_service.process_rag_query(chest_id=chest_id, question=question)
+        
+        #rag_response = await rag_service.process_rag_query(chest_id=chest_id, question=question)
         '''
         finally:
             db_generator.close()

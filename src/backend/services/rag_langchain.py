@@ -90,12 +90,12 @@ class RAGLangChain:
         self.chain = build_rag_chain(load_store())
         
 
-    async def run_query(self, question):
+    def run_query(self, question):
         
         """Run a query."""
         try:
             return {
-                "answer": await self.chain.ainvoke(question),
+                "answer": self.chain.invoke(question),
                 "retrieved_documents": []
             }
         except Exception as e:

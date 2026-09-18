@@ -28,14 +28,15 @@ if not config.MOCK_MODE and not config.USE_LLAMA_SERVER:
     )
 if config.USE_LLAMA_SERVER:
     import openai
-    from openai import AsyncOpenAI
+    #from openai import AsyncOpenAI
+    from openai import OpenAI
 
     try:
-        client = AsyncOpenAI(
+        client = OpenAI(
             base_url=config.OPENAI_SERVER_URL,  # f"{config.LLAMA_SERVER_URL.rstrip('/')}/v1",
             api_key=config.API_KEY,
             timeout=300.0,
-            default_headers={"X-DashScope-Async": "disable"},
+            #default_headers={"X-DashScope-Async": "disable"},
         )
         print("OpenAI client created succesfully")
     except Exception as e:
@@ -299,7 +300,7 @@ async def rag_answer_async_generator(
 
     for chunk in output:
         # print(f"[{time.time()}] YIELDING CHUNK: {chunk}")
-        await asyncio.sleep(0.1)
+        #await asyncio.sleep(0.1)
         yield format_sse_event(chunk)
 
     yield format_sse_done()
@@ -315,11 +316,9 @@ def rag_answer_generator(question: str, context_chunks: List[str]) -> str:
     #    else:
     # Combine context chunks
     context = "\n\n".join(context_chunks)
-    prompt = f"""Context information is below.
----------------------
-{context}
----------------------
-Given the context information and not prior knowledge, answer the question.
+    prompt = f"""
+Context: {context}
+Given the context information, answer the question based ONLY on the context.
 Q: {question}
 A:"""
     # print("USER PROMPT: ", prompt)
@@ -341,7 +340,7 @@ A:"""
             response = client.chat.completions.create(
                 model=config.MODEL_NAME,  # "local-model",
                 messages=[{"role": "user", "content": prompt}],
-                # max_tokens=config.MAX_TOKENS,
+                max_tokens=config.MAX_TOKENS,
                 temperature=0.8,
                 stream=False,
             )
@@ -349,15 +348,17 @@ A:"""
             print(
                 f"OpenAI server HTTP error: {e.status_code} - {e.response.text}"
             )
+            print(f"Here's the failed prompt: {prompt}")
             return {
                 "choices": [
                     {
-                        "text": "Sorry, the inference server returned an error while generating an answer."
+                        "text": "Sorry, the inference server returned an error while generating an answer. "
                     }
                 ]
             }
         except openai.APIError as e:
             print(f"Error contacting OpenAI server: {e}")
+            print(f"Here's the failed prompt: {prompt}")
             return {
                 "choices": [{"text": "Sorry, I could not reach the inference server."}]
             }
@@ -383,7 +384,7 @@ A:"""
     return output  # f"[RAG Answer Placeholder] Based on the context, here is an answer to: {question}"
 
 
-async def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
+def process_rag_query(chest_id: int, question: str, db: Session = None) -> dict:
     """Process a complete RAG query"""
     try:
         if config.RAG_IMPL == "naive":
@@ -411,7 +412,7 @@ async def process_rag_query(chest_id: int, question: str, db: Session = None) ->
             # source_ids_used = list(set(meta.get("source_id") for meta in filtered_metadata if meta.get("source_id")))
         elif config.RAG_IMPL == "langchain":
             print("I reached this point!!!!")
-            return await rlc.run_query(question=question)
+            return rlc.run_query(question=question)
 
         return answer
 

@@ -79,7 +79,7 @@ async def process_chat_query(
 
     # Non streaming way
     try:
-        response = await rag_service.process_rag_query(rag_query.chest_id, rag_query.question, db)
+        response = rag_service.process_rag_query(rag_query.chest_id, rag_query.question, db)
     except Exception as e:
         print("Error in process_rag_query: ", e)
 
