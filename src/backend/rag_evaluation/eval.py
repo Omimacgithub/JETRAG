@@ -82,11 +82,12 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
             db.add(DBChatMessage(**user_message.dict()))
             db.commit()
         '''
-        print("Call to RAG pipeline, please wait...")
+        print("\nCall to RAG pipeline, please wait...")
         start = time.time()
         #semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent tasks
         #async with semaphore:
         
+        #to_thread: Asynchronously run function *func* in a separate thread, so BATCH_SIZE threads are created
         rag_response = await asyncio.to_thread(
             rag_service.process_rag_query, chest_id, question, #db
         )
@@ -96,7 +97,6 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         finally:
             db_generator.close()
         '''
-        print("I have results!!!!")
 
     #print("question: ", str(question))
     #print("row: ", str(row))
@@ -106,7 +106,7 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
     #await rag_response
 
     #print("rag_response: ", str(rag_response))
-
+    print("Awaited LLM response, now calling correctness_metric.ascore")
     score = await correctness_metric.ascore(
         question=question,
         expected_answer=row["expected_answer"],
@@ -114,11 +114,11 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         llm=llm
     )
 
-    print("Now I am fine!!!!")
     #await score
     #print("score: ", str(score))
     
     # Return evaluation results
+    print("Awaited correctness_metric.ascore, now I'm going to wait for the results")
     result = {
         **row,
         "model_response": rag_response["answer"],
@@ -126,8 +126,7 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
         "correctness_reason": score.reason,
         "retrieved_documents": rag_response["retrieved_documents"]
     }
-    print("Maybe I failed at this point!!!!")
-    print(f"Time: {time.time() - start} seconds")
+    print(f"Finished in {time.time() - start} seconds")
 
     '''
     result = {

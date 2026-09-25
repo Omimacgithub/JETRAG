@@ -278,10 +278,16 @@ I implemented a RAG pipeline evaluation system that uses **RAGAS**, a LLM-as-a-j
 > [!NOTE]
 > You can run the evaluation with/out the backend server (setting config.USE_BACKEND flag). This can be useful if you want to evaluate a remote instance of JETRAG.
 
-Start llama web server (local):
+Start llama_cpp_python web server (local):
 ~~~bash
 (source venv)
-python3 -m llama_cpp.server --n_gpu_layers 37 --model /home/omi/.cache/huggingface/hub/models--unsloth--gemma-4-E4B-it-GGUF/snapshots/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
+python3 -m llama_cpp.server --n_gpu_layers 37 --model $HF_MODEL --flash_attn True --n_ctx 4096 --type_k 8 --type_v 8 --host localhost --port 8080
+~~~
+
+Or Llama.cpp:
+
+~~~bash
+llama-server --parallel 5 --n-gpu-layers -1 --model $HF_MODEL --flash-attn on --ctx-size 5120 --cache-type-k q8_0 --cache-type-v q8_0 --host localhost --port 8080 --reasoning off
 ~~~
 
 To start the evaluation, run the following script on the root project dir:

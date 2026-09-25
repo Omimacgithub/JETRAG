@@ -151,12 +151,13 @@ async def run_evaluation():
     items = list(dataset)
 
     rag_implementation = config.RAG_IMPL if hasattr(config, "RAG_IMPL") else "naive"
-
     
+    start = time.time()
+    print(f"Experiment started at {start}")
     for xed, i in enumerate(range(0, len(items), BATCH_SIZE)):
         exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M')}_" + rag_implementation + f"_rag_batch_{xed}"
         print(f"Run evaluation on batch {xed}, please wait...")
-        start = time.time()
+        
         batch = items[i:i + BATCH_SIZE]
         print(f"Processing batch {i//BATCH_SIZE + 1}/{(len(items) + BATCH_SIZE - 1)//BATCH_SIZE}")
 
@@ -188,6 +189,7 @@ async def run_evaluation():
         pass_rate = (pass_count / total_count) * 100 if total_count > 0 else 0
         print("---------------------------------")
         print(f"RESULTS: {pass_count}/{total_count} PASSED ({pass_rate:.1f}%)")
+        print(f"Total experiment time: {time.time() - start}")
         print("---------------------------------")
 
     return results

@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     # Trigger llama_index SentenceSplitter, otherwise a simple regexp splitter is used
     LLAMA_SPLITTER: bool = True
     # Set size of chunk text division
-    CHUNK_SIZE: int = 250
+    CHUNK_SIZE: int = 512
     # Text overlapping between chunks
     CHUNK_OVERLAP: int = 0
     # Number of best matching chunks returned from user query
-    TOP_K: int = 5
+    TOP_K: int = 2
 
     # Flag to not load LLM model (for frontend debugging).
     MOCK_MODE: bool = False
