@@ -162,11 +162,11 @@ async def run_evaluation():
         print(f"Processing batch {i//BATCH_SIZE + 1}/{(len(items) + BATCH_SIZE - 1)//BATCH_SIZE}")
 
         batch_dataset = Dataset(
-        name=dataset.name,
-        backend=dataset.backend,
-        #root_dir=dataset.root_dir,
-        data=batch
-    )
+            name=dataset.name,
+            backend=dataset.backend,
+            #root_dir=dataset.root_dir,
+            data=batch
+        )
         
         batch_results = await evaluate_rag.arun(batch_dataset, name=exp_name, llm=llm, chest_id=chest_id)
         results.extend(batch_results)

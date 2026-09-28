@@ -10,3 +10,4 @@ src/frontend/node_modules/*
 .opencode/*
 openspec/*
 src/backend/venv/*
+src/backend/rag_evaluation/experiments/*.csv

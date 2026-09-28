@@ -128,5 +128,6 @@ print("OPENAI_SERVER_URL: " + str(config.OPENAI_SERVER_URL))
 print("MODEL_NAME: " + str(config.MODEL_NAME))
 print("STREAMING: " + str(config.STREAMING))
 
-input("This settings are correct?: ")
+#input("This settings are correct?: ")
+
 

@@ -45,7 +45,6 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
 
     Args:
         row: Dictionary containing question and expected_answer
-        rag: Pre-initialized RAG instance
         llm: Pre-initialized LLM client for evaluation
         chest_id: Identifier of the chest holding the sources used to answer
 
@@ -82,12 +81,12 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
             db.add(DBChatMessage(**user_message.dict()))
             db.commit()
         '''
-        print("\nCall to RAG pipeline, please wait...")
         start = time.time()
         #semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent tasks
         #async with semaphore:
         
         #to_thread: Asynchronously run function *func* in a separate thread, so BATCH_SIZE threads are created
+        print("Await LLM response")
         rag_response = await asyncio.to_thread(
             rag_service.process_rag_query, chest_id, question, #db
         )
@@ -106,19 +105,30 @@ async def evaluate_rag(row: Dict[str, Any], llm, chest_id: int) -> Dict[str, Any
     #await rag_response
 
     #print("rag_response: ", str(rag_response))
-    print("Awaited LLM response, now calling correctness_metric.ascore")
+    print("Awaited correctness_metric.ascore")
+    
+    print("Await correctness_metric.ascore")
+    stert = time.time()
+    '''
     score = await correctness_metric.ascore(
         question=question,
         expected_answer=row["expected_answer"],
         response=rag_response["answer"],
         llm=llm
     )
+    '''
+    #'''This won't work, as an async function is a coroutine so asyncio.to_thread will not execute it
+    score = await asyncio.to_thread(
+        correctness_metric.score,
+        question=question,
+        expected_answer=row["expected_answer"],
+        response=rag_response["answer"],
+        llm=llm
+    )
+    #'''
+    print(f"Finished await in {time.time() - stert} seconds")
 
-    #await score
-    #print("score: ", str(score))
-    
     # Return evaluation results
-    print("Awaited correctness_metric.ascore, now I'm going to wait for the results")
     result = {
         **row,
         "model_response": rag_response["answer"],
